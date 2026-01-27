@@ -63,7 +63,7 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({ type }) =>
                 animate={{ opacity: 1 }}
                 transition={{ duration: 1 }}
             />
-            <div className="absolute inset-0 bg-black/20" /> {/* Subtle overlay for better text contrast */}
+            <div className="absolute inset-0 bg-black/60" /> {/* Darker overlay for better text contrast */}
         </div>
     );
 };
