@@ -15,7 +15,7 @@ export default function SpatialTextInput({
   const [isSpaceKeyPressed, setIsSpaceKeyPressed] = useState(false);
   const [speechData, setSpeechData] = useState<SpeechStatus>({ text: '', status: 'idle' });
   const [micPermissionStatus, setMicPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
-  
+
   // Handle spacebar visual indicator
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -23,16 +23,16 @@ export default function SpatialTextInput({
         setIsSpaceKeyPressed(true);
       }
     };
-    
+
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         setIsSpaceKeyPressed(false);
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -62,7 +62,7 @@ export default function SpatialTextInput({
     navigator.permissions?.query({ name: 'microphone' as PermissionName })
       .then(permissionStatus => {
         setMicPermissionStatus(permissionStatus.state);
-        
+
         permissionStatus.onchange = () => {
           setMicPermissionStatus(permissionStatus.state);
         };
@@ -76,7 +76,7 @@ export default function SpatialTextInput({
     <div className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* visionOS-style background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-800 via-gray-900 to-black z-0" />
-      
+
       {/* Subtle particle/light effect in background */}
       <div className="absolute inset-0 z-0 opacity-20">
         {Array.from({ length: 8 }).map((_, i) => (
@@ -117,13 +117,13 @@ export default function SpatialTextInput({
         transition={{ duration: 0.5 }}
       >
         <header className="text-center mb-4">
-          <motion.h1 
+          <motion.h1
             className="text-3xl font-light mb-2 text-white/90"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            The Next Paradigm on Input
+            The Next Paradigm of Input
           </motion.h1>
           <motion.p
             className="text-lg text-white/60 font-light"
@@ -136,7 +136,7 @@ export default function SpatialTextInput({
         </header>
 
         <div className="relative">
-          <TextEditor 
+          <TextEditor
             initialText={initialText}
             onListeningChange={handleListeningChange}
           />
@@ -144,7 +144,7 @@ export default function SpatialTextInput({
       </motion.div>
 
       <GazeIndicator isActive={showGazeIndicator} />
-      <VoiceVisualizer 
+      <VoiceVisualizer
         isListening={isListening}
         speechData={speechData}
         micPermissionStatus={micPermissionStatus}
@@ -153,7 +153,7 @@ export default function SpatialTextInput({
       <InfoPanel />
       <SpaceKey active={isSpaceKeyPressed} />
 
-      <motion.div 
+      <motion.div
         className="absolute bottom-4 left-4 text-sm text-white/40 font-light"
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.7 }}
@@ -161,15 +161,15 @@ export default function SpatialTextInput({
       >
         Prototype for Apple Vision Pro • Spatial Computing
       </motion.div>
-      
+
       {/* Version number in bottom right corner */}
-      <motion.div 
+      <motion.div
         className="absolute bottom-4 right-4 text-sm text-white/40 font-light"
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.7 }}
         transition={{ delay: 1 }}
       >
-        v1.1.13
+        v1.2.0
       </motion.div>
     </div>
   );
