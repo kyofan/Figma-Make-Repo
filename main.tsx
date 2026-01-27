@@ -1,24 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { defineProperties } from "figma:react";
-import { motion } from 'motion/react';
-import { TextEditor } from './components/TextEditor';
-import { GazeIndicator } from './components/GazeIndicator';
-import { VoiceVisualizer, SpeechStatus } from './components/VoiceVisualizer';
-import { InfoPanel } from './components/InfoPanel';
+import { motion } from "motion/react";
+import { TextEditor } from "./components/TextEditor";
+import { GazeIndicator } from "./components/GazeIndicator";
+import { VoiceVisualizer, SpeechStatus } from "./components/VoiceVisualizer";
+import { InfoPanel } from "./components/InfoPanel";
 
-import { BackgroundManager, BackgroundType } from './components/BackgroundManager';
-import { BackgroundToggle } from './components/BackgroundToggle';
+import {
+  BackgroundManager,
+  BackgroundType,
+} from "./components/BackgroundManager";
+import { BackgroundToggle } from "./components/BackgroundToggle";
 
 export default function SpatialTextInput({
   showGazeIndicator = true,
-  initialText = "Could we meet on Monday at the Studio?"
+  initialText = "Could we meet on Monday at the Studio?",
 }) {
   const [isListening, setIsListening] = useState(false);
-  const [speechData, setSpeechData] = useState<SpeechStatus>({ text: '', status: 'idle' });
-  const [micPermissionStatus, setMicPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
-  const [backgroundType, setBackgroundType] = useState<BackgroundType>('original');
-
-
+  const [speechData, setSpeechData] = useState<SpeechStatus>({
+    text: "",
+    status: "idle",
+  });
+  const [micPermissionStatus, setMicPermissionStatus] = useState<
+    "granted" | "denied" | "prompt" | "unknown"
+  >("unknown");
+  const [backgroundType, setBackgroundType] =
+    useState<BackgroundType>("original");
 
   const handleListeningChange = (listening: boolean, data?: SpeechStatus) => {
     setIsListening(listening);
@@ -29,27 +36,31 @@ export default function SpatialTextInput({
 
   // Request microphone permissions explicitly
   const requestMicrophonePermission = () => {
-    navigator.mediaDevices.getUserMedia({ audio: true })
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
       .then(() => {
-        setMicPermissionStatus('granted');
+        setMicPermissionStatus("granted");
       })
       .catch(() => {
-        setMicPermissionStatus('denied');
+        setMicPermissionStatus("denied");
       });
   };
 
   // Check microphone permission on mount
   useEffect(() => {
-    navigator.permissions?.query({ name: 'microphone' as PermissionName })
-      .then(permissionStatus => {
+    navigator.permissions
+      ?.query({ name: "microphone" as PermissionName })
+      .then((permissionStatus) => {
         setMicPermissionStatus(permissionStatus.state);
 
         permissionStatus.onchange = () => {
           setMicPermissionStatus(permissionStatus.state);
         };
       })
-      .catch(error => {
-        console.log('Permission API not supported, will check when starting recognition');
+      .catch((error) => {
+        console.log(
+          "Permission API not supported, will check when starting recognition",
+        );
       });
   }, []);
 
@@ -101,7 +112,10 @@ export default function SpatialTextInput({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1.2 }}
         >
-          <BackgroundToggle currentType={backgroundType} onTypeChange={setBackgroundType} />
+          <BackgroundToggle
+            currentType={backgroundType}
+            onTypeChange={setBackgroundType}
+          />
         </motion.div>
       </div>
 
@@ -121,7 +135,7 @@ export default function SpatialTextInput({
         animate={{ opacity: 0.7 }}
         transition={{ delay: 1 }}
       >
-        v1.2.1
+        v1.2.2
       </motion.div>
     </div>
   );
@@ -131,11 +145,11 @@ defineProperties(SpatialTextInput, {
   showGazeIndicator: {
     label: "Show gaze indicator",
     type: "boolean",
-    defaultValue: true
+    defaultValue: true,
   },
   initialText: {
     label: "Initial text",
     type: "string",
-    defaultValue: "Could we meet on Monday at the Studio?"
-  }
+    defaultValue: "Could we meet on Monday at the Studio?",
+  },
 });

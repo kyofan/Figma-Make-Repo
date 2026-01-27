@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
-import { SpeechStatus } from './VoiceVisualizer';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { motion } from "motion/react";
+import { SpeechStatus } from "./VoiceVisualizer";
 
 interface TextEditorProps {
   initialText: string;
@@ -9,18 +9,18 @@ interface TextEditorProps {
 
 export const TextEditor: React.FC<TextEditorProps> = ({
   initialText,
-  onListeningChange
+  onListeningChange,
 }) => {
   const [text, setText] = useState(initialText);
   const [words, setWords] = useState<string[]>([]);
   const [focusedWordIndex, setFocusedWordIndex] = useState<number | null>(null);
   const [lockedWordIndex, setLockedWordIndex] = useState<number | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
+  const [transcript, setTranscript] = useState("");
   const [editHistory, setEditHistory] = useState<string[]>([initialText]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState("");
   const [spacebarHintVisible, setSpacebarHintVisible] = useState(false);
 
   // Use refs to avoid state updates that could cause render loops
@@ -28,11 +28,12 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   const recognitionRef = useRef<any>(null);
   const activeWordIndexRef = useRef<number | null>(null);
   const isListeningRef = useRef<boolean>(false);
-  const realTimeSpeechTextRef = useRef<string>('');
+  const realTimeSpeechTextRef = useRef<string>("");
 
   // Helper function to update activeWordIndexRef
   const updateActiveWordRef = useCallback(() => {
-    activeWordIndexRef.current = focusedWordIndex !== null ? focusedWordIndex : lockedWordIndex;
+    activeWordIndexRef.current =
+      focusedWordIndex !== null ? focusedWordIndex : lockedWordIndex;
     console.log(`Active word updated: ${activeWordIndexRef.current}`);
   }, [focusedWordIndex, lockedWordIndex]);
 
@@ -57,22 +58,27 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   // Initialize speech recognition once on mount
   useEffect(() => {
     // Check if browser supports speech recognition
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.log('Speech recognition not supported in this browser');
+    if (
+      !("webkitSpeechRecognition" in window) &&
+      !("SpeechRecognition" in window)
+    ) {
+      console.log("Speech recognition not supported in this browser");
       return;
     }
 
     // Initialize speech recognition
-    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    const SpeechRecognition =
+      (window as any).webkitSpeechRecognition ||
+      (window as any).SpeechRecognition;
     if (SpeechRecognition) {
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
+      recognitionRef.current.lang = "en-US";
 
       // Set up speech recognition handlers
       recognitionRef.current.onstart = () => {
-        console.log('Speech recognition started');
+        console.log("Speech recognition started");
         isListeningRef.current = true;
         setIsListening(true);
 
@@ -81,10 +87,12 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
         // Notify parent
         if (onListeningChange) {
-          onListeningChange(true, { text: '', status: 'listening' });
+          onListeningChange(true, { text: "", status: "listening" });
         }
 
-        showTemporaryFeedback(`Listening... (selected word: ${wordsRef.current[activeWordIndexRef.current || 0]?.trim() || 'none'})`);
+        showTemporaryFeedback(
+          `Listening... (selected word: ${wordsRef.current[activeWordIndexRef.current || 0]?.trim() || "none"})`,
+        );
       };
 
       recognitionRef.current.onresult = (event: any) => {
@@ -99,7 +107,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         if (onListeningChange) {
           onListeningChange(true, {
             text: transcriptText,
-            status: 'processing'
+            status: "processing",
           });
         }
 
@@ -110,36 +118,40 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       };
 
       recognitionRef.current.onend = () => {
-        console.log('Speech recognition ended');
+        console.log("Speech recognition ended");
 
         // Get the current values from refs to avoid closure issues
         const currentActiveWord = activeWordIndexRef.current;
         const currentTranscript = realTimeSpeechTextRef.current || transcript;
 
-        console.log(`Speech end - Word index: ${currentActiveWord}, Transcript: "${currentTranscript}"`);
+        console.log(
+          `Speech end - Word index: ${currentActiveWord}, Transcript: "${currentTranscript}"`,
+        );
 
         // Apply the edit if we have a transcript and selected word
         if (currentTranscript && currentActiveWord !== null) {
-          console.log(`Applying edit to word ${currentActiveWord}: "${currentTranscript}"`);
+          console.log(
+            `Applying edit to word ${currentActiveWord}: "${currentTranscript}"`,
+          );
           applySemanticEdit(currentActiveWord, currentTranscript);
         } else {
-          showTemporaryFeedback('No edit applied - missing word or speech');
-          console.log('No edit applied:', {
+          showTemporaryFeedback("No edit applied - missing word or speech");
+          console.log("No edit applied:", {
             activeWord: currentActiveWord,
             transcript: currentTranscript,
-            words: wordsRef.current
+            words: wordsRef.current,
           });
         }
 
         // Reset state
         isListeningRef.current = false;
         setIsListening(false);
-        setTranscript('');
-        realTimeSpeechTextRef.current = '';
+        setTranscript("");
+        realTimeSpeechTextRef.current = "";
 
         // Notify parent component
         if (onListeningChange) {
-          onListeningChange(false, { text: '', status: 'idle' });
+          onListeningChange(false, { text: "", status: "idle" });
         }
       };
 
@@ -151,7 +163,11 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         showTemporaryFeedback(`Error: ${event.error}`);
 
         if (onListeningChange) {
-          onListeningChange(false, { text: '', status: 'error', error: event.error });
+          onListeningChange(false, {
+            text: "",
+            status: "error",
+            error: event.error,
+          });
         }
       };
     }
@@ -186,34 +202,43 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       // Ignore key repeat events (when holding down the key)
       if (e.repeat) return;
 
-      console.log(`KeyDown: ${e.code}, isListening: ${isListening}, focusedWordIndex: ${focusedWordIndex}, lockedWordIndex: ${lockedWordIndex}`);
-      if (e.code === 'Space' && !isListening && (focusedWordIndex !== null || lockedWordIndex !== null)) {
+      console.log(
+        `KeyDown: ${e.code}, isListening: ${isListening}, focusedWordIndex: ${focusedWordIndex}, lockedWordIndex: ${lockedWordIndex}`,
+      );
+      if (
+        e.code === "Space" &&
+        !isListening &&
+        (focusedWordIndex !== null || lockedWordIndex !== null)
+      ) {
         e.preventDefault();
-        console.log('Starting listening from spacebar...');
+        console.log("Starting listening from spacebar...");
         startListening();
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && isListening) {
+      if (e.code === "Space" && isListening) {
         e.preventDefault();
         stopListening(true); // Apply edits when releasing spacebar
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
   }, [isListening, focusedWordIndex, lockedWordIndex]);
 
   // Handle clicks outside the text container to lock/unlock focus
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (textContainerRef.current && !textContainerRef.current.contains(e.target as Node)) {
+      if (
+        textContainerRef.current &&
+        !textContainerRef.current.contains(e.target as Node)
+      ) {
         // Clicked outside the text container
         if (focusedWordIndex !== null && focusedWordIndex !== lockedWordIndex) {
           console.log(`Locking word: ${focusedWordIndex}`);
@@ -223,22 +248,25 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       } else {
         // Clicked inside the text container, clear the locked word
         if (lockedWordIndex !== null) {
-          console.log('Unlocking word');
+          console.log("Unlocking word");
           setLockedWordIndex(null);
         }
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [focusedWordIndex, lockedWordIndex]);
 
   // Show spacebar hint when word is focused or locked
   useEffect(() => {
-    if ((focusedWordIndex !== null || lockedWordIndex !== null) && !isListening) {
+    if (
+      (focusedWordIndex !== null || lockedWordIndex !== null) &&
+      !isListening
+    ) {
       setSpacebarHintVisible(true);
     } else {
       setSpacebarHintVisible(false);
@@ -261,13 +289,13 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   // Start speech recognition
   const startListening = () => {
     if (activeWordIndexRef.current === null) {
-      showTemporaryFeedback('Please look at a word first');
+      showTemporaryFeedback("Please look at a word first");
       return;
     }
 
     // Make sure we're not already listening
     if (isListeningRef.current) {
-      console.log('Already listening, ignoring start request');
+      console.log("Already listening, ignoring start request");
       return;
     }
 
@@ -275,15 +303,15 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
     // If Web Speech API is not available, use simulation
     if (!recognitionRef.current) {
-      console.log('Speech recognition not available, simulating');
+      console.log("Speech recognition not available, simulating");
       isListeningRef.current = true;
       setIsListening(true);
 
       if (onListeningChange) {
-        onListeningChange(true, { text: '', status: 'listening' });
+        onListeningChange(true, { text: "", status: "listening" });
       }
 
-      showTemporaryFeedback('Simulating voice recognition');
+      showTemporaryFeedback("Simulating voice recognition");
       return;
     }
 
@@ -291,8 +319,8 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     try {
       recognitionRef.current.start();
     } catch (error) {
-      console.error('Error starting speech recognition:', error);
-      showTemporaryFeedback('Error starting speech recognition');
+      console.error("Error starting speech recognition:", error);
+      showTemporaryFeedback("Error starting speech recognition");
       isListeningRef.current = false;
       setIsListening(false);
     }
@@ -301,7 +329,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   // Stop speech recognition
   const stopListening = (applyChanges = true) => {
     if (!isListeningRef.current) {
-      console.log('Not listening, ignoring stop request');
+      console.log("Not listening, ignoring stop request");
       return;
     }
 
@@ -311,7 +339,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       try {
         recognitionRef.current.stop();
       } catch (e) {
-        console.error('Error stopping speech recognition:', e);
+        console.error("Error stopping speech recognition:", e);
       }
     }
 
@@ -319,11 +347,11 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     if (!applyChanges) {
       isListeningRef.current = false;
       setIsListening(false);
-      setTranscript('');
-      realTimeSpeechTextRef.current = '';
+      setTranscript("");
+      realTimeSpeechTextRef.current = "";
 
       if (onListeningChange) {
-        onListeningChange(false, { text: '', status: 'idle' });
+        onListeningChange(false, { text: "", status: "idle" });
       }
     }
   };
@@ -333,7 +361,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     const activeIndex = activeWordIndexRef.current;
 
     if (activeIndex === null) {
-      showTemporaryFeedback('Please hover over a word first');
+      showTemporaryFeedback("Please hover over a word first");
       return;
     }
 
@@ -348,7 +376,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
     // Notify parent for visualization
     if (onListeningChange) {
-      onListeningChange(true, { text: input, status: 'processing' });
+      onListeningChange(true, { text: input, status: "processing" });
     }
 
     // Show feedback
@@ -364,11 +392,11 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       setIsListening(false);
       setFocusedWordIndex(null);
       setLockedWordIndex(null);
-      realTimeSpeechTextRef.current = '';
+      realTimeSpeechTextRef.current = "";
 
       // Notify parent
       if (onListeningChange) {
-        onListeningChange(false, { text: '', status: 'idle' });
+        onListeningChange(false, { text: "", status: "idle" });
       }
     }, 1000);
   };
@@ -381,7 +409,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     const historyIndex = historyIndexRef.current;
 
     if (!newContent.trim()) {
-      console.log('Not applying empty edit');
+      console.log("Not applying empty edit");
       return;
     }
 
@@ -394,128 +422,151 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     // We'll create word objects that include their index and type
     const structuredWords = [];
     for (let i = 0; i < words.length; i++) {
-      if (words[i].trim() === '') {
+      if (words[i].trim() === "") {
         // Skip spaces for the analysis (we'll keep them for reconstruction)
         continue;
       }
 
       const word = words[i].trim().toLowerCase();
-      let type = 'other';
+      let type = "other";
 
       // Classify word types
-      if (/monday|tuesday|wednesday|thursday|friday|saturday|sunday/i.test(word)) {
-        type = 'day';
+      if (
+        /monday|tuesday|wednesday|thursday|friday|saturday|sunday/i.test(word)
+      ) {
+        type = "day";
       } else if (/\d+(:\d+)?\s*(am|pm)|noon|midnight/i.test(word)) {
-        type = 'time';
+        type = "time";
       } else if (/(studio|office|room|home|building)/i.test(word)) {
-        type = 'location';
+        type = "location";
       } else if (/at|in|on|for|with|to|by/i.test(word)) {
-        type = 'preposition';
+        type = "preposition";
       } else if (/the|a|an|this|that|these|those/i.test(word)) {
-        type = 'article';
+        type = "article";
       } else if (/next|last|this|coming|previous/i.test(word)) {
-        type = 'temporal';
+        type = "temporal";
       }
 
       structuredWords.push({
         index: i,
         word,
-        type
+        type,
       });
     }
 
     // Find the target word in our structured representation
-    const targetWordObj = structuredWords.find(w => w.index === wordIndex);
+    const targetWordObj = structuredWords.find((w) => w.index === wordIndex);
     if (!targetWordObj) {
-      console.error('Target word not found in structured representation');
+      console.error("Target word not found in structured representation");
       return;
     }
 
     // Classify the new content
     const newContentLower = newContent.trim().toLowerCase();
-    let newType = 'other';
+    let newType = "other";
 
-    if (/monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|yesterday/i.test(newContentLower)) {
-      newType = 'day';
+    if (
+      /monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|yesterday/i.test(
+        newContentLower,
+      )
+    ) {
+      newType = "day";
     } else if (/\d+(:\d+)?\s*(am|pm)|noon|midnight/i.test(newContentLower)) {
-      newType = 'time';
-    } else if (/(conference room|office|studio|building|online)/i.test(newContentLower)) {
-      newType = 'location';
+      newType = "time";
+    } else if (
+      /(conference room|office|studio|building|online)/i.test(newContentLower)
+    ) {
+      newType = "location";
     }
 
-    console.log(`Target word type: ${targetWordObj.type}, New content type: ${newType}`);
+    console.log(
+      `Target word type: ${targetWordObj.type}, New content type: ${newType}`,
+    );
 
     // Now determine what surrounding context might need to change
     // We need to find the phrase containing the target word
     const phraseMembers = findPhraseMembers(structuredWords, targetWordObj);
-    console.log('Phrase members:', phraseMembers);
+    console.log("Phrase members:", phraseMembers);
 
     // Create a copy of words for modification
     const newWords = [...words];
 
     // Handle specific semantic replacements based on word types
-    if (targetWordObj.type === 'day' && newType === 'day') {
+    if (targetWordObj.type === "day" && newType === "day") {
       // Example: "on Monday" -> "next Tuesday"
-      const phrasePreposition = phraseMembers.find(m => m.type === 'preposition');
-      const phraseTemporal = phraseMembers.find(m => m.type === 'temporal');
+      const phrasePreposition = phraseMembers.find(
+        (m) => m.type === "preposition",
+      );
+      const phraseTemporal = phraseMembers.find((m) => m.type === "temporal");
 
-      if (phrasePreposition && phrasePreposition.word === 'on' && newContentLower.includes('next')) {
+      if (
+        phrasePreposition &&
+        phrasePreposition.word === "on" &&
+        newContentLower.includes("next")
+      ) {
         // Change "on" to blank if "next" is in the new content
-        newWords[phrasePreposition.index] = 'next';
+        newWords[phrasePreposition.index] = "next";
         // Remove 'next' from the replacement if it's already being added as a preposition
-        newContent = newContent.replace(/^next\s+/i, '');
-      } else if (phrasePreposition && !newContentLower.includes('tomorrow')) {
+        newContent = newContent.replace(/^next\s+/i, "");
+      } else if (phrasePreposition && !newContentLower.includes("tomorrow")) {
         // For days, generally keep the same preposition unless specifically
         // changing to "tomorrow" or similar
-      } else if (newContentLower === 'tomorrow' && phrasePreposition) {
+      } else if (newContentLower === "tomorrow" && phrasePreposition) {
         // For "tomorrow", remove prepositions like "on"
-        newWords[phrasePreposition.index] = '';
+        newWords[phrasePreposition.index] = "";
 
         // Also remove any temporal modifiers like "this" or "next"
         if (phraseTemporal) {
-          newWords[phraseTemporal.index] = '';
+          newWords[phraseTemporal.index] = "";
         }
       }
-    }
-    else if (targetWordObj.type === 'location' && newType === 'location') {
+    } else if (targetWordObj.type === "location" && newType === "location") {
       // Handle location changes like "Studio" -> "in the conference room"
-      const phrasePreposition = phraseMembers.find(m => m.type === 'preposition');
+      const phrasePreposition = phraseMembers.find(
+        (m) => m.type === "preposition",
+      );
 
-      if (!phrasePreposition && newContentLower.startsWith('in ')) {
+      if (!phrasePreposition && newContentLower.startsWith("in ")) {
         // No existing preposition, but new content starts with one
         // We'll keep the "in" from the new content
-      }
-      else if (phrasePreposition && newContentLower === 'online') {
+      } else if (phrasePreposition && newContentLower === "online") {
         // Remove preposition when changing to "online"
-        newWords[phrasePreposition.index] = '';
+        newWords[phrasePreposition.index] = "";
 
         // Also remove any articles
-        const phraseArticle = phraseMembers.find(m => m.type === 'article');
+        const phraseArticle = phraseMembers.find((m) => m.type === "article");
         if (phraseArticle) {
-          newWords[phraseArticle.index] = '';
+          newWords[phraseArticle.index] = "";
         }
-      }
-      else if (phrasePreposition && newContentLower.startsWith('in ') && phrasePreposition.word !== 'in') {
+      } else if (
+        phrasePreposition &&
+        newContentLower.startsWith("in ") &&
+        phrasePreposition.word !== "in"
+      ) {
         // Change preposition to match the new one
-        newWords[phrasePreposition.index] = 'in';
+        newWords[phrasePreposition.index] = "in";
         // Remove 'in ' from the replacement since we're already adding it
-        newContent = newContent.replace(/^in\s+/i, '');
+        newContent = newContent.replace(/^in\s+/i, "");
       }
-    }
-    else if (targetWordObj.type === 'time' && newType === 'time') {
+    } else if (targetWordObj.type === "time" && newType === "time") {
       // Handle time changes - typically we just replace the time itself
       // but keep prepositions like "at" intact
-      const phrasePreposition = phraseMembers.find(m => m.type === 'preposition');
+      const phrasePreposition = phraseMembers.find(
+        (m) => m.type === "preposition",
+      );
 
-      if (!phrasePreposition && newContentLower.startsWith('at ')) {
+      if (!phrasePreposition && newContentLower.startsWith("at ")) {
         // No existing preposition, but new content starts with one
         // We'll keep the "at" from the new content
-      }
-      else if (phrasePreposition && newContentLower.startsWith('at ') && phrasePreposition.word !== 'at') {
+      } else if (
+        phrasePreposition &&
+        newContentLower.startsWith("at ") &&
+        phrasePreposition.word !== "at"
+      ) {
         // Change preposition to match the new one
-        newWords[phrasePreposition.index] = 'at';
+        newWords[phrasePreposition.index] = "at";
         // Remove 'at ' from the replacement since we're already adding it
-        newContent = newContent.replace(/^at\s+/i, '');
+        newContent = newContent.replace(/^at\s+/i, "");
       }
     }
 
@@ -528,7 +579,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
     for (let i = 0; i < newWords.length; i++) {
       const word = newWords[i];
-      if (word === '') continue; // Skip empty entries
+      if (word === "") continue; // Skip empty entries
 
       const isSpace = /^\s+$/.test(word);
 
@@ -541,12 +592,12 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     // Make sure we have proper spacing
     for (let i = 0; i < cleanedWords.length - 1; i++) {
       if (!/\s$/.test(cleanedWords[i]) && !/^\s/.test(cleanedWords[i + 1])) {
-        cleanedWords[i] = cleanedWords[i] + ' ';
+        cleanedWords[i] = cleanedWords[i] + " ";
       }
     }
 
     // Join the words back to form the new text
-    const newText = cleanedWords.join('');
+    const newText = cleanedWords.join("");
 
     // Add to history
     const newHistory = [...editHistory.slice(0, historyIndex + 1), newText];
@@ -556,13 +607,15 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     setEditHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
 
-    showTemporaryFeedback('Semantic edit applied');
+    showTemporaryFeedback("Semantic edit applied");
   };
 
   // Helper function to find the members of a phrase containing a target word
-  const findPhraseMembers = (structuredWords, targetWord) => {
+  const findPhraseMembers = (structuredWords: any[], targetWord: any) => {
     const result = [targetWord];
-    const targetIndex = structuredWords.findIndex(w => w.index === targetWord.index);
+    const targetIndex = structuredWords.findIndex(
+      (w: any) => w.index === targetWord.index,
+    );
 
     if (targetIndex === -1) return result;
 
@@ -570,7 +623,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     for (let i = targetIndex - 1; i >= 0; i--) {
       const word = structuredWords[i];
 
-      if (['preposition', 'article', 'temporal'].includes(word.type)) {
+      if (["preposition", "article", "temporal"].includes(word.type)) {
         result.push(word);
       } else if (word.type !== targetWord.type) {
         // Stop if we hit a different content type
@@ -585,9 +638,9 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     for (let i = targetIndex + 1; i < structuredWords.length; i++) {
       const word = structuredWords[i];
 
-      if (word.type === targetWord.type || word.type === 'article') {
+      if (word.type === targetWord.type || word.type === "article") {
         result.push(word);
-      } else if (['preposition', 'temporal'].includes(word.type)) {
+      } else if (["preposition", "temporal"].includes(word.type)) {
         // Stop at a new preposition or temporal modifier
         break;
       }
@@ -604,7 +657,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     if (historyIndex > 0) {
       setHistoryIndex(historyIndex - 1);
       setText(editHistory[historyIndex - 1]);
-      showTemporaryFeedback('Undo');
+      showTemporaryFeedback("Undo");
     }
   };
 
@@ -613,7 +666,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     if (historyIndex < editHistory.length - 1) {
       setHistoryIndex(historyIndex + 1);
       setText(editHistory[historyIndex + 1]);
-      showTemporaryFeedback('Redo');
+      showTemporaryFeedback("Redo");
     }
   };
 
@@ -625,24 +678,35 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       >
         <div className="text-content text-2xl font-light leading-relaxed tracking-wide text-white/90">
           {words.map((word, index) => {
-            const isActive = index === focusedWordIndex || index === lockedWordIndex;
+            const isActive =
+              index === focusedWordIndex || index === lockedWordIndex;
             return (
               <span
                 key={index}
-                className={`word-span relative ${word.trim() === '' ? 'whitespace-pre' : 'inline'} ${isActive && word.trim() !== '' ? 'text-blue-400 font-normal' : ''}`}
+                className={`word-span relative ${word.trim() === "" ? "whitespace-pre" : "inline"} ${isActive && word.trim() !== "" ? "text-blue-400 font-normal" : ""}`}
                 onMouseEnter={() => {
-                  if (word.trim() === '' || lockedWordIndex !== null || isListening) return;
+                  if (
+                    word.trim() === "" ||
+                    lockedWordIndex !== null ||
+                    isListening
+                  )
+                    return;
                   console.log(`Focusing word ${index}: "${word.trim()}"`);
                   setFocusedWordIndex(index);
                 }}
                 onMouseLeave={() => {
-                  if (word.trim() === '' || lockedWordIndex !== null || isListening) return;
+                  if (
+                    word.trim() === "" ||
+                    lockedWordIndex !== null ||
+                    isListening
+                  )
+                    return;
                   console.log(`Unfocusing word ${index}`);
                   setFocusedWordIndex(null);
                 }}
               >
                 {word}
-                {isActive && word.trim() !== '' && (
+                {isActive && word.trim() !== "" && (
                   <motion.div
                     className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-400/70 shadow-[0_0_8px_rgba(59,130,246,0.6)]"
                     initial={{ scaleX: 0 }}
@@ -679,9 +743,13 @@ export const TextEditor: React.FC<TextEditorProps> = ({
             >
               <div className="text-white/50 text-xs mb-1">Detected speech:</div>
               <div className="text-base font-light mb-2">
-                {transcript || realTimeSpeechTextRef.current || <span className="text-white/40 italic">Listening...</span>}
+                {transcript || realTimeSpeechTextRef.current || (
+                  <span className="text-white/40 italic">Listening...</span>
+                )}
               </div>
-              <div className="text-white/60 text-xs">Release space to apply</div>
+              <div className="text-white/60 text-xs">
+                Release space to apply
+              </div>
             </motion.div>
           ) : spacebarHintVisible ? (
             <motion.div
@@ -699,7 +767,9 @@ export const TextEditor: React.FC<TextEditorProps> = ({
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="text-sm font-light">Hover over a word to simulate eye-tracking</div>
+              <div className="text-sm font-light">
+                Hover over a word to simulate eye-tracking
+              </div>
             </motion.div>
           )}
         </div>
@@ -736,40 +806,42 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         </div>
 
         <div className="voice-simulation mt-4 w-full">
-          <p className="text-center text-white/60 mb-3 text-sm font-light">Simulate Voice Commands:</p>
+          <p className="text-center text-white/60 mb-3 text-sm font-light">
+            Simulate Voice Commands:
+          </p>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             <button
-              onClick={() => simulateVoiceInput('next Tuesday')}
+              onClick={() => simulateVoiceInput("next Tuesday")}
               className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
             >
               "next Tuesday"
             </button>
             <button
-              onClick={() => simulateVoiceInput('at 3 PM')}
+              onClick={() => simulateVoiceInput("at 3 PM")}
               className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
             >
               "at 3 PM"
             </button>
             <button
-              onClick={() => simulateVoiceInput('in the conference room')}
+              onClick={() => simulateVoiceInput("in the conference room")}
               className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
             >
               "in the conference room"
             </button>
             <button
-              onClick={() => simulateVoiceInput('tomorrow')}
+              onClick={() => simulateVoiceInput("tomorrow")}
               className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
             >
               "tomorrow"
             </button>
             <button
-              onClick={() => simulateVoiceInput('with the design team')}
+              onClick={() => simulateVoiceInput("with the design team")}
               className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
             >
               "with the design team"
             </button>
             <button
-              onClick={() => simulateVoiceInput('online')}
+              onClick={() => simulateVoiceInput("online")}
               className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
             >
               "online"
@@ -777,8 +849,6 @@ export const TextEditor: React.FC<TextEditorProps> = ({
           </div>
         </div>
       </div>
-
-
     </div>
   );
 };
