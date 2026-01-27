@@ -5,7 +5,7 @@ import { TextEditor } from './components/TextEditor';
 import { GazeIndicator } from './components/GazeIndicator';
 import { VoiceVisualizer, SpeechStatus } from './components/VoiceVisualizer';
 import { InfoPanel } from './components/InfoPanel';
-import SpaceKey from './components/SpaceKey';
+
 import { BackgroundManager, BackgroundType } from './components/BackgroundManager';
 import { BackgroundToggle } from './components/BackgroundToggle';
 
@@ -14,33 +14,11 @@ export default function SpatialTextInput({
   initialText = "Could we meet on Monday at the Studio?"
 }) {
   const [isListening, setIsListening] = useState(false);
-  const [isSpaceKeyPressed, setIsSpaceKeyPressed] = useState(false);
   const [speechData, setSpeechData] = useState<SpeechStatus>({ text: '', status: 'idle' });
   const [micPermissionStatus, setMicPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
   const [backgroundType, setBackgroundType] = useState<BackgroundType>('original');
 
-  // Handle spacebar visual indicator
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        setIsSpaceKeyPressed(true);
-      }
-    };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        setIsSpaceKeyPressed(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
 
   const handleListeningChange = (listening: boolean, data?: SpeechStatus) => {
     setIsListening(listening);
@@ -113,14 +91,8 @@ export default function SpatialTextInput({
       </motion.div>
 
       <GazeIndicator isActive={showGazeIndicator} />
-      <VoiceVisualizer
-        isListening={isListening}
-        speechData={speechData}
-        micPermissionStatus={micPermissionStatus}
-        onRequestMicPermission={requestMicrophonePermission}
-      />
+
       <InfoPanel />
-      <SpaceKey active={isSpaceKeyPressed} />
 
       {/* Control panel area in top left */}
       <div className="absolute top-4 left-4 z-50">

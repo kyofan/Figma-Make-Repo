@@ -253,7 +253,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
     const timer = setTimeout(() => {
       setShowFeedback(false);
-    }, 2000);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -668,41 +668,71 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         </motion.div>
       )}
 
-      {/* Spacebar hint */}
-      <motion.div
-        className="flex items-center justify-center space-x-2 mb-4"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{
-          opacity: spacebarHintVisible ? 1 : 0,
-          y: spacebarHintVisible ? 0 : 10
-        }}
-        transition={{ duration: 0.2 }}
-      >
-        <div className="px-4 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white/80 font-light text-sm">
+      <div className="controls-container flex flex-col items-center space-y-6 w-full max-w-3xl">
+        <div className="flex space-x-4 w-full justify-center min-h-[110px] items-center">
           {isListening ? (
-            "Release space to apply"
+            <motion.div
+              className="px-6 py-3 rounded-2xl bg-blue-500/20 backdrop-blur-md border border-blue-400/30 text-white text-center min-w-[250px]"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="text-white/50 text-xs mb-1">Detected speech:</div>
+              <div className="text-base font-light mb-2">
+                {transcript || realTimeSpeechTextRef.current || <span className="text-white/40 italic">Listening...</span>}
+              </div>
+              <div className="text-white/60 text-xs">Release space to apply</div>
+            </motion.div>
+          ) : spacebarHintVisible ? (
+            <motion.div
+              className="px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white/80 text-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="text-sm font-light">Hold space to speak</div>
+            </motion.div>
           ) : (
-            "Hold space to speak"
+            <motion.div
+              className="px-6 py-3 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/60 text-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="text-sm font-light">Hover over a word to simulate eye-tracking</div>
+            </motion.div>
           )}
         </div>
-      </motion.div>
 
-      <div className="controls-container flex flex-col items-center space-y-6 w-full max-w-3xl">
-        <div className="flex space-x-4 w-full justify-center">
-          <button
-            onClick={undo}
-            disabled={historyIndex <= 0}
-            className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/80 font-light text-sm transition-all disabled:opacity-30 hover:bg-white/15"
-          >
-            Undo
-          </button>
-          <button
-            onClick={redo}
-            disabled={historyIndex >= editHistory.length - 1}
-            className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/80 font-light text-sm transition-all disabled:opacity-30 hover:bg-white/15"
-          >
-            Redo
-          </button>
+        {/* Actions or Feedback */}
+        <div className="flex space-x-4 w-full justify-center min-h-[50px] items-center">
+          {showFeedback ? (
+            <motion.div
+              className="bg-white/10 backdrop-blur-xl border border-white/20 text-white px-6 py-2 rounded-2xl shadow-lg text-sm"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              {feedbackMessage}
+            </motion.div>
+          ) : (
+            <>
+              <button
+                onClick={undo}
+                disabled={historyIndex <= 0}
+                className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/80 font-light text-sm transition-all disabled:opacity-30 hover:bg-white/15"
+              >
+                Undo
+              </button>
+              <button
+                onClick={redo}
+                disabled={historyIndex >= editHistory.length - 1}
+                className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/80 font-light text-sm transition-all disabled:opacity-30 hover:bg-white/15"
+              >
+                Redo
+              </button>
+            </>
+          )}
         </div>
 
         <div className="voice-simulation mt-4 w-full">
@@ -748,27 +778,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         </div>
       </div>
 
-      {/* Feedback toast */}
-      <motion.div
-        className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-xl border border-white/20 text-white px-6 py-3 rounded-2xl shadow-lg z-50"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: showFeedback ? 1 : 0, y: showFeedback ? 0 : 20 }}
-        transition={{ duration: 0.3 }}
-      >
-        {feedbackMessage}
-      </motion.div>
 
-      {/* Instructions */}
-      <div className="instructions-container mt-8 w-full max-w-3xl bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6">
-        <h3 className="text-xl font-light mb-4 text-white/90">How to use:</h3>
-        <ol className="list-decimal pl-6 space-y-3 text-white/80 font-light">
-          <li>Hover over a word to simulate eye-tracking/gaze (it will highlight in blue)</li>
-          <li>Click anywhere outside the text to lock your selection</li>
-          <li>Hold <span className="inline-block mx-1 px-2 py-0.5 bg-white/20 rounded-md text-white">space</span> to activate your microphone or use the simulated voice commands</li>
-          <li>Release <span className="inline-block mx-1 px-2 py-0.5 bg-white/20 rounded-md text-white">space</span> to apply the speech recognition result</li>
-          <li>The system will automatically apply the edit with contextual understanding</li>
-        </ol>
-      </div>
     </div>
   );
 };
