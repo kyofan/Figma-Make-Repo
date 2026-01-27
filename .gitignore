@@ -1,1 +1,6 @@
-/.DS_Store
+node_modules
+dist
+.DS_Store
+*.local
+.env
+.gemini
