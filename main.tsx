@@ -6,6 +6,8 @@ import { GazeIndicator } from './components/GazeIndicator';
 import { VoiceVisualizer, SpeechStatus } from './components/VoiceVisualizer';
 import { InfoPanel } from './components/InfoPanel';
 import SpaceKey from './components/SpaceKey';
+import { BackgroundManager, BackgroundType } from './components/BackgroundManager';
+import { BackgroundToggle } from './components/BackgroundToggle';
 
 export default function SpatialTextInput({
   showGazeIndicator = true,
@@ -15,6 +17,7 @@ export default function SpatialTextInput({
   const [isSpaceKeyPressed, setIsSpaceKeyPressed] = useState(false);
   const [speechData, setSpeechData] = useState<SpeechStatus>({ text: '', status: 'idle' });
   const [micPermissionStatus, setMicPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+  const [backgroundType, setBackgroundType] = useState<BackgroundType>('original');
 
   // Handle spacebar visual indicator
   useEffect(() => {
@@ -74,41 +77,7 @@ export default function SpatialTextInput({
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* visionOS-style background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-800 via-gray-900 to-black z-0" />
-
-      {/* Subtle particle/light effect in background */}
-      <div className="absolute inset-0 z-0 opacity-20">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-48 h-48 rounded-full bg-gradient-to-r from-blue-400/30 to-purple-400/30 blur-3xl"
-            initial={{
-              x: Math.random() * 100 - 50 + '%',
-              y: Math.random() * 100 - 50 + '%',
-              scale: Math.random() * 0.5 + 0.5,
-            }}
-            animate={{
-              x: [
-                Math.random() * 100 - 50 + '%',
-                Math.random() * 100 - 50 + '%',
-                Math.random() * 100 - 50 + '%',
-              ],
-              y: [
-                Math.random() * 100 - 50 + '%',
-                Math.random() * 100 - 50 + '%',
-                Math.random() * 100 - 50 + '%',
-              ],
-            }}
-            transition={{
-              duration: 20 + Math.random() * 30,
-              repeat: Infinity,
-              repeatType: "reverse",
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </div>
+      <BackgroundManager type={backgroundType} />
 
       <motion.div
         className="w-full max-w-4xl z-10"
@@ -152,6 +121,17 @@ export default function SpatialTextInput({
       />
       <InfoPanel />
       <SpaceKey active={isSpaceKeyPressed} />
+
+      {/* Control panel area in top left */}
+      <div className="absolute top-4 left-4 z-50">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 1.2 }}
+        >
+          <BackgroundToggle currentType={backgroundType} onTypeChange={setBackgroundType} />
+        </motion.div>
+      </div>
 
       <motion.div
         className="absolute bottom-4 left-4 text-sm text-white/40 font-light"
