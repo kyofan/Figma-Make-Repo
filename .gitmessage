@@ -1,0 +1,24 @@
+<type>(<scope>): <subject>
+
+# --- Commit Message Guidelines ---
+# Header: <type>(<scope>): <subject> (Max 50 chars, no period at end)
+# 
+# type: feat, fix, docs, style, refactor, perf, test, chore, revert
+# scope: Optional. Affected area (e.g., UI, logic, db)
+# subject: Short description of the change
+#
+# Body: Detailed description (What & Why). Wrap at 72 chars.
+#
+# Footer: Issues reference (e.g., Fixes #123), BREAKING CHANGE
+# ---------------------------------
+
+# [Type]
+# feat:     New feature
+# fix:      Bug fix
+# docs:     Documentation changes
+# style:    Formatting, missing semi colons, etc; no code change
+# refactor: Refactoring code, eg. renaming variables
+# perf:     Improvements for performance
+# test:     Adding missing tests
+# chore:    Updating grunt tasks etc; no production code change
+# revert:   Revert to a previous commit
