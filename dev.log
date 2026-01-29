@@ -8,4 +8,3 @@ Re-optimizing dependencies because lockfile has changed
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-7:36:41 AM [vite] hmr update /components/HandTrackingManager.tsx, /index.css
