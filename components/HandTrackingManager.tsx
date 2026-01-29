@@ -95,6 +95,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     if (!videoRef.current) return;
 
     try {
+        console.log("Requesting camera access...");
         const stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 width: 1280,
@@ -103,11 +104,22 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
             }
         });
 
+        console.log("Camera access granted, setting stream...");
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadeddata = () => {
-            setIsCameraActive(true);
-            setCameraError(null);
+
+        // Explicitly play and handle promise
+        videoRef.current.oncanplay = () => {
+            console.log("Video can play, starting playback...");
+            videoRef.current?.play().then(() => {
+                console.log("Video playing successfully");
+                setIsCameraActive(true);
+                setCameraError(null);
+            }).catch(e => {
+                console.error("Error playing video:", e);
+                setCameraError("Error starting video stream.");
+            });
         };
+
     } catch (err) {
         console.error("Error accessing camera:", err);
         setCameraError("Camera permission denied.");
