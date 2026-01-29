@@ -7,7 +7,7 @@ import {
     NormalizedLandmark
 } from "@mediapipe/tasks-vision";
 import { motion, AnimatePresence } from "motion/react";
-import { Settings, Eye, EyeOff, Hand, MousePointer2, Monitor, Check } from "lucide-react";
+import { Settings, Eye, EyeOff, Hand, MousePointer2, Monitor, Check, Crosshair, Sliders } from "lucide-react";
 
 // Types
 interface HandTrackingManagerProps {
@@ -33,7 +33,13 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     const [showCamera, setShowCamera] = useState(true);
     const [isTracking, setIsTracking] = useState(true);
     const [targetHand, setTargetHand] = useState<"Right" | "Left">("Left");
+    const [trackingMode, setTrackingMode] = useState<"Center" | "Relative">("Center");
+    const [sensitivity, setSensitivity] = useState(50); // 1-100 linear value
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    // Tracking Logic Refs
+    const handStartPosRef = useRef<{ x: number, y: number } | null>(null);
+    const wasTrackingRef = useRef(false);
 
     // Smoothing refs
     const cursorRef = useRef<{ x: number, y: number }>({ x: 0, y: 0 });
@@ -43,7 +49,8 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     const pinchStateRef = useRef({
         isPinching: false,
         startTime: 0,
-        isHolding: false
+        isHolding: false,
+        lastPinchTime: 0  // Track when pinch was last detected
     });
     const lastHoveredElement = useRef<Element | null>(null);
 
@@ -218,8 +225,42 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     const indexTip = landmarks[8];  // Still used for pinch detection
                     const thumbTip = landmarks[4];
 
-                    const targetX = (1 - wrist.x) * window.innerWidth;
-                    const targetY = wrist.y * window.innerHeight;
+                    // Apply sensitivity scaling (1-100 slider → 0.5x to 2.5x multiplier)
+                    const sensitivityMultiplier = 0.5 + (sensitivity / 100) * 2;
+
+                    let targetX, targetY;
+
+                    if (trackingMode === "Relative") {
+                        // Relative mode: direct mapping with padding
+                        const padding = 0.25;
+                        const effectiveX = (wrist.x - padding) / (1 - 2 * padding);
+                        const effectiveY = (wrist.y - padding) / (1 - 2 * padding);
+
+                        targetX = (1 - Math.max(0, Math.min(1, effectiveX))) * window.innerWidth;
+                        targetY = Math.max(0, Math.min(1, effectiveY)) * window.innerHeight;
+
+                        // Reset handStartPos when switching to relative
+                        handStartPosRef.current = null;
+                    } else {
+                        // Center mode: Start at center, then track delta
+                        if (!wasTrackingRef.current || !handStartPosRef.current) {
+                            // Just detected hand - initialize
+                            handStartPosRef.current = { x: wrist.x, y: wrist.y };
+                            cursorRef.current = {
+                                x: window.innerWidth / 2,
+                                y: window.innerHeight / 2
+                            };
+                            wasTrackingRef.current = true;
+                        }
+
+                        // Calculate delta from start position
+                        const dx = (wrist.x - handStartPosRef.current.x) * window.innerWidth;
+                        const dy = (wrist.y - handStartPosRef.current.y) * window.innerHeight;
+
+                        // Apply delta with sensitivity
+                        targetX = (window.innerWidth / 2) - dx * sensitivityMultiplier;
+                        targetY = (window.innerHeight / 2) + dy * sensitivityMultiplier;
+                    }
 
                     cursorRef.current.x += (targetX - cursorRef.current.x) * smoothingFactor;
                     cursorRef.current.y += (targetY - cursorRef.current.y) * smoothingFactor;
@@ -287,6 +328,9 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     }
 
                     if (currentPinching) {
+                        // Update last pinch time
+                        pinchStateRef.current.lastPinchTime = now;
+
                         if (!wasPinching) {
                             pinchStateRef.current.isPinching = true;
                             pinchStateRef.current.startTime = now;
@@ -303,8 +347,8 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                             }
                         } else {
                             const duration = now - startTime;
-                            if (duration > 400 && !isHolding) {
-                                console.log("Hand Tracking: Triggering Spacebar Down (Hold)");
+                            if (duration > 300 && !isHolding) {
+                                console.log("Hand Tracking: Spacebar Down (Hold Detected)");
                                 window.dispatchEvent(new KeyboardEvent("keydown", {
                                     code: "Space",
                                     key: " ",
@@ -315,7 +359,11 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                             }
                         }
                     } else {
-                        if (wasPinching) {
+                        // Not currently pinching - check if enough time has passed since last pinch
+                        const timeSinceLastPinch = now - pinchStateRef.current.lastPinchTime;
+
+                        if (wasPinching && timeSinceLastPinch > 150) {
+                            // Pinch has been absent for 150ms - confirm release
                             if (targetElement) {
                                 targetElement.dispatchEvent(new MouseEvent("mouseup", {
                                     bubbles: true,
@@ -327,7 +375,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                             }
 
                             if (isHolding) {
-                                console.log("Hand Tracking: Triggering Spacebar Up (Release)");
+                                console.log("Hand Tracking: Spacebar Up (Hold Released)");
                                 window.dispatchEvent(new KeyboardEvent("keyup", {
                                     code: "Space",
                                     key: " ",
@@ -352,17 +400,15 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                 }
             } else {
                 // Hand lost or wrong hand
-                // Optionally reset pinching state to avoid stuck holds
-                // But be careful not to trigger clicks if hand just flickered
-
-                // For now, do nothing.
+                wasTrackingRef.current = false;
+                handStartPosRef.current = null;
             }
         }
 
         canvasCtx.restore();
 
         requestRef.current = requestAnimationFrame(predict);
-    }, [handLandmarker, isTracking, targetHand]);
+    }, [handLandmarker, isTracking, targetHand, trackingMode, sensitivity]);
 
     useEffect(() => {
         requestRef.current = requestAnimationFrame(predict);
@@ -433,6 +479,45 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                                             Right
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="h-px bg-white/10 my-2" />
+
+                                {/* Tracking Mode */}
+                                <div className="space-y-2">
+                                    <span className="text-sm font-light flex items-center gap-2">
+                                        <Crosshair size={14} /> Orientation
+                                    </span>
+                                    <div className="flex bg-white/10 rounded-lg p-1">
+                                        <button
+                                            onClick={() => setTrackingMode("Center")}
+                                            className={`flex-1 py-1.5 text-xs rounded-md transition-all ${trackingMode === "Center" ? "bg-white/20 shadow-sm" : "text-white/40 hover:text-white/60"}`}
+                                        >
+                                            Center
+                                        </button>
+                                        <button
+                                            onClick={() => setTrackingMode("Relative")}
+                                            className={`flex-1 py-1.5 text-xs rounded-md transition-all ${trackingMode === "Relative" ? "bg-white/20 shadow-sm" : "text-white/40 hover:text-white/60"}`}
+                                        >
+                                            Relative
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Sensitivity Slider */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center text-sm font-light">
+                                        <span className="flex items-center gap-2"><Sliders size={14} /> Speed</span>
+                                        <span className="text-xs text-white/60">{sensitivity}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="100"
+                                        value={sensitivity}
+                                        onChange={(e) => setSensitivity(Number(e.target.value))}
+                                        className="w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                                    />
                                 </div>
 
                                 {/* Show Camera */}
