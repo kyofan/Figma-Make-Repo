@@ -17,7 +17,7 @@ interface HandTrackingManagerProps {
 export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     onHandActiveChange
 }) => {
-    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>();
 
@@ -32,7 +32,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     // Settings
     const [showCamera, setShowCamera] = useState(true);
     const [isTracking, setIsTracking] = useState(true);
-    const [targetHand, setTargetHand] = useState<"Right" | "Left">("Right");
+    const [targetHand, setTargetHand] = useState<"Right" | "Left">("Left");
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Smoothing refs
@@ -54,9 +54,6 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
         }
     }, [isTracking, onHandActiveChange]);
 
-    // Model Loading State
-    const [isModelLoading, setIsModelLoading] = useState(true);
-
     // Initialize HandLandmarker
     useEffect(() => {
         const initLandmarker = async () => {
@@ -77,12 +74,11 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     minTrackingConfidence: 0.5
                 });
 
+
                 setHandLandmarker(landmarker);
-                setIsModelLoading(false);
                 console.log("HandLandmarker initialized");
             } catch (error) {
                 console.error("Error initializing HandLandmarker:", error);
-                setIsModelLoading(false);
             }
         };
 
@@ -95,71 +91,60 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
         };
     }, []);
 
-    // Initialize Camera
-    const cameraStartedRef = useRef(false);
-
-    const startCamera = useCallback(async (videoElement: HTMLVideoElement) => {
-        if (cameraStartedRef.current) {
-            console.log("HandTrackingManager: Camera already started, skipping");
-            return;
-        }
-        cameraStartedRef.current = true;
-
+    // Standalone media request function for portability
+    const requestMediaAccess = async () => {
         try {
-            console.log("HandTrackingManager: Requesting camera stream...");
-            const stream = await navigator.mediaDevices.getUserMedia({
+            return await navigator.mediaDevices.getUserMedia({
                 video: {
                     width: 1280,
                     height: 720,
                     facingMode: "user"
-                }
+                },
+                audio: true // Request microphone access
             });
+        } catch (err) {
+            throw err;
+        }
+    };
 
-            console.log("HandTrackingManager: Camera stream acquired", stream.id);
-            videoElement.srcObject = stream;
+    // Initialize Camera
+    const startCamera = async () => {
+        if (!videoRef.current) return;
 
-            videoElement.onloadeddata = async () => {
-                console.log("HandTrackingManager: Video data loaded, attempting to play...");
-                try {
-                    await videoElement.play();
+        try {
+            console.log("Requesting camera/mic access...");
+            const stream = await requestMediaAccess();
+
+            console.log("Media access granted");
+            videoRef.current.srcObject = stream;
+
+            // Explicitly play and handle promise
+            videoRef.current.oncanplay = () => {
+                console.log("Video can play, starting playback...");
+                videoRef.current?.play().then(() => {
+                    console.log("Video playing successfully");
                     setIsCameraActive(true);
                     setCameraError(null);
-                    console.log("HandTrackingManager: Video playing");
-                } catch (playError) {
-                    console.error("HandTrackingManager: Error playing video:", playError);
-                    setCameraError("Failed to start video playback.");
-                }
+                }).catch(e => console.error("Play error:", e));
             };
-
-            videoElement.onerror = (e) => {
-                console.error("HandTrackingManager: Video element error:", e);
-            };
-
         } catch (err) {
-            console.error("HandTrackingManager: Error accessing camera:", err);
-            setCameraError("Camera permission denied or not found.");
-            cameraStartedRef.current = false; // Allow retry
+            console.error("Error accessing camera/microphone:", err);
+            setCameraError("Camera or Microphone permission denied.");
         }
-    }, []);
+    };
 
-    // Callback ref to start camera when video element is mounted
-    const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
-        videoRef.current = node;
-        if (node) {
-            startCamera(node);
+    useEffect(() => {
+        if (handLandmarker && !isCameraActive) {
+            startCamera();
         }
-    }, [startCamera]);
+    }, [handLandmarker]);
 
     // Detection Loop
     const predict = useCallback(() => {
-        if (!videoRef.current || !canvasRef.current) return;
+        if (!handLandmarker || !videoRef.current || !canvasRef.current) return;
 
-        // Use video states instead of just checking if it exists
-        if (videoRef.current.readyState < 2) { // HAVE_CURRENT_DATA
-            requestRef.current = requestAnimationFrame(predict);
-            return;
-        }
-
+        // Resume loop even if not tracking, to keep video fresh/ready?
+        // Or just pause detection.
         if (!isTracking) {
             // Clear canvas
             const ctx = canvasRef.current.getContext("2d");
@@ -179,161 +164,178 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
             canvasRef.current.height = videoRef.current.videoHeight;
         }
 
-        // Only detect if landmarker is ready
-        if (handLandmarker) {
-            const startTimeMs = performance.now();
-            const results = handLandmarker.detectForVideo(videoRef.current, startTimeMs);
+        const startTimeMs = performance.now();
+        const results = handLandmarker.detectForVideo(videoRef.current, startTimeMs);
 
-            const canvasCtx = canvasRef.current.getContext("2d");
-            if (!canvasCtx) return;
+        const canvasCtx = canvasRef.current.getContext("2d");
+        if (!canvasCtx) return;
 
-            canvasCtx.save();
-            canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-            if (results.landmarks && results.landmarks.length > 0) {
-                // Find the correct hand
-                let targetIndex = -1;
+        if (results.landmarks && results.landmarks.length > 0) {
+            // Find the correct hand
+            let targetIndex = -1;
 
-                // MediaPipe handedness labels are often inverse of reality in selfie mode due to mirroring.
-                // "Left" usually corresponds to the user's Right hand in the image if standard selfie logic applies?
-                // Actually, MediaPipe returns "Left" for the hand that appears on the left of the image (which is user's right in mirror).
-                // BUT, the label "Left" usually means "Left Hand".
-                // Let's rely on testing or common behavior: The model predicts "Left" or "Right".
-                // If I raise my Right hand, and it's mirrored, it looks like a Left hand?
-                // Actually, MediaPipe is trained to recognize "Right Hand" regardless of position?
-                // Let's assume standard behavior: we look for the label matching our target.
-                // If it feels wrong, we can swap.
+            // MediaPipe handedness labels are often inverse of reality in selfie mode due to mirroring.
+            // "Left" usually corresponds to the user's Right hand in the image if standard selfie logic applies?
+            // Actually, MediaPipe returns "Left" for the hand that appears on the left of the image (which is user's right in mirror).
+            // BUT, the label "Left" usually means "Left Hand".
+            // Let's rely on testing or common behavior: The model predicts "Left" or "Right".
+            // If I raise my Right hand, and it's mirrored, it looks like a Left hand?
+            // Actually, MediaPipe is trained to recognize "Right Hand" regardless of position?
+            // Let's assume standard behavior: we look for the label matching our target.
+            // If it feels wrong, we can swap.
 
-                // Note: For now, I will match exact label.
-                for (let i = 0; i < results.handedness.length; i++) {
-                    if (results.handedness[i][0].categoryName === targetHand) {
-                        targetIndex = i;
-                        break;
-                    }
+            // Note: For now, I will match exact label.
+            for (let i = 0; i < results.handedness.length; i++) {
+                if (results.handedness[i][0].categoryName === targetHand) {
+                    targetIndex = i;
+                    break;
                 }
+            }
 
-                // Fallback: If "Right" is requested but only 1 hand is there and it's labeled "Left" (maybe misclassified),
-                // we might want to just take it? No, user wants accuracy.
-                // If detection is robust, we stick to targetIndex.
+            // Fallback: If "Right" is requested but only 1 hand is there and it's labeled "Left" (maybe misclassified),
+            // we might want to just take it? No, user wants accuracy.
+            // If detection is robust, we stick to targetIndex.
 
-                if (targetIndex !== -1) {
-                    const landmarks = results.landmarks[targetIndex];
+            if (targetIndex !== -1) {
+                const landmarks = results.landmarks[targetIndex];
 
-                    // Draw
-                    const drawingUtils = new DrawingUtils(canvasCtx);
-                    drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
-                        color: "#00FF00",
-                        lineWidth: 5
-                    });
-                    drawingUtils.drawLandmarks(landmarks, {
-                        color: "#FF0000",
-                        lineWidth: 2
-                    });
+                // Draw
+                const drawingUtils = new DrawingUtils(canvasCtx);
+                drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
+                    color: "#00FF00",
+                    lineWidth: 5
+                });
+                drawingUtils.drawLandmarks(landmarks, {
+                    color: "#FF0000",
+                    lineWidth: 2
+                });
 
-                    if (landmarks.length >= 9) {
-                        const indexTip = landmarks[8];
-                        const thumbTip = landmarks[4];
+                if (landmarks.length >= 9) {
+                    const wrist = landmarks[0];  // Use wrist for cursor position (stable during pinch)
+                    const indexTip = landmarks[8];  // Still used for pinch detection
+                    const thumbTip = landmarks[4];
 
-                        const targetX = (1 - indexTip.x) * window.innerWidth;
-                        const targetY = indexTip.y * window.innerHeight;
+                    const targetX = (1 - wrist.x) * window.innerWidth;
+                    const targetY = wrist.y * window.innerHeight;
 
-                        cursorRef.current.x += (targetX - cursorRef.current.x) * smoothingFactor;
-                        cursorRef.current.y += (targetY - cursorRef.current.y) * smoothingFactor;
+                    cursorRef.current.x += (targetX - cursorRef.current.x) * smoothingFactor;
+                    cursorRef.current.y += (targetY - cursorRef.current.y) * smoothingFactor;
 
-                        setCursorPosition({ ...cursorRef.current });
+                    setCursorPosition({ ...cursorRef.current });
 
-                        const dx = indexTip.x - thumbTip.x;
-                        const dy = indexTip.y - thumbTip.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const PINCH_THRESHOLD = 0.05;
-                        const currentPinching = distance < PINCH_THRESHOLD;
+                    const dx = indexTip.x - thumbTip.x;
+                    const dy = indexTip.y - thumbTip.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const PINCH_THRESHOLD = 0.05;
+                    const currentPinching = distance < PINCH_THRESHOLD;
 
-                        setIsPinching(currentPinching);
+                    setIsPinching(currentPinching);
 
-                        const now = performance.now();
-                        const { isPinching: wasPinching, startTime, isHolding } = pinchStateRef.current;
+                    const now = performance.now();
+                    const { isPinching: wasPinching, startTime, isHolding } = pinchStateRef.current;
 
-                        const targetElement = document.elementFromPoint(cursorRef.current.x, cursorRef.current.y);
+                    const targetElement = document.elementFromPoint(cursorRef.current.x, cursorRef.current.y);
 
-                        if (targetElement) {
-                            targetElement.dispatchEvent(new MouseEvent("mousemove", {
+                    if (targetElement) {
+                        targetElement.dispatchEvent(new MouseEvent("mousemove", {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: cursorRef.current.x,
+                            clientY: cursorRef.current.y
+                        }));
+                    }
+
+                    if (targetElement !== lastHoveredElement.current) {
+                        if (lastHoveredElement.current) {
+                            lastHoveredElement.current.dispatchEvent(new MouseEvent("mouseout", {
                                 bubbles: true,
-                                cancelable: true,
                                 view: window,
+                                relatedTarget: targetElement,
+                                clientX: cursorRef.current.x,
+                                clientY: cursorRef.current.y
+                            }));
+                            lastHoveredElement.current.dispatchEvent(new MouseEvent("mouseleave", {
+                                bubbles: false,
+                                view: window,
+                                relatedTarget: targetElement,
                                 clientX: cursorRef.current.x,
                                 clientY: cursorRef.current.y
                             }));
                         }
 
-                        if (targetElement !== lastHoveredElement.current) {
-                            if (lastHoveredElement.current) {
-                                lastHoveredElement.current.dispatchEvent(new MouseEvent("mouseout", {
-                                    bubbles: true,
-                                    view: window,
-                                    relatedTarget: targetElement,
-                                    clientX: cursorRef.current.x,
-                                    clientY: cursorRef.current.y
-                                }));
-                                lastHoveredElement.current.dispatchEvent(new MouseEvent("mouseleave", {
-                                    bubbles: false,
-                                    view: window,
-                                    relatedTarget: targetElement,
-                                    clientX: cursorRef.current.x,
-                                    clientY: cursorRef.current.y
-                                }));
-                            }
+                        if (targetElement) {
+                            targetElement.dispatchEvent(new MouseEvent("mouseover", {
+                                bubbles: true,
+                                view: window,
+                                relatedTarget: lastHoveredElement.current,
+                                clientX: cursorRef.current.x,
+                                clientY: cursorRef.current.y
+                            }));
+                            targetElement.dispatchEvent(new MouseEvent("mouseenter", {
+                                bubbles: false,
+                                view: window,
+                                relatedTarget: lastHoveredElement.current,
+                                clientX: cursorRef.current.x,
+                                clientY: cursorRef.current.y
+                            }));
+                        }
+                        lastHoveredElement.current = targetElement;
+                    }
+
+                    if (currentPinching) {
+                        if (!wasPinching) {
+                            pinchStateRef.current.isPinching = true;
+                            pinchStateRef.current.startTime = now;
+                            pinchStateRef.current.isHolding = false;
 
                             if (targetElement) {
-                                targetElement.dispatchEvent(new MouseEvent("mouseover", {
+                                targetElement.dispatchEvent(new MouseEvent("mousedown", {
                                     bubbles: true,
+                                    cancelable: true,
                                     view: window,
-                                    relatedTarget: lastHoveredElement.current,
                                     clientX: cursorRef.current.x,
                                     clientY: cursorRef.current.y
                                 }));
-                                targetElement.dispatchEvent(new MouseEvent("mouseenter", {
-                                    bubbles: false,
-                                    view: window,
-                                    relatedTarget: lastHoveredElement.current,
-                                    clientX: cursorRef.current.x,
-                                    clientY: cursorRef.current.y
-                                }));
-                            }
-                            lastHoveredElement.current = targetElement;
-                        }
-
-                        if (currentPinching) {
-                            if (!wasPinching) {
-                                pinchStateRef.current.isPinching = true;
-                                pinchStateRef.current.startTime = now;
-                                pinchStateRef.current.isHolding = false;
-
-                                if (targetElement) {
-                                    targetElement.dispatchEvent(new MouseEvent("mousedown", {
-                                        bubbles: true,
-                                        cancelable: true,
-                                        view: window,
-                                        clientX: cursorRef.current.x,
-                                        clientY: cursorRef.current.y
-                                    }));
-                                }
-                            } else {
-                                const duration = now - startTime;
-                                if (duration > 400 && !isHolding) {
-                                    console.log("Hand Tracking: Triggering Spacebar Down (Hold)");
-                                    window.dispatchEvent(new KeyboardEvent("keydown", {
-                                        code: "Space",
-                                        key: " ",
-                                        bubbles: true,
-                                        repeat: false
-                                    }));
-                                    pinchStateRef.current.isHolding = true;
-                                }
                             }
                         } else {
-                            if (wasPinching) {
+                            const duration = now - startTime;
+                            if (duration > 400 && !isHolding) {
+                                console.log("Hand Tracking: Triggering Spacebar Down (Hold)");
+                                window.dispatchEvent(new KeyboardEvent("keydown", {
+                                    code: "Space",
+                                    key: " ",
+                                    bubbles: true,
+                                    repeat: false
+                                }));
+                                pinchStateRef.current.isHolding = true;
+                            }
+                        }
+                    } else {
+                        if (wasPinching) {
+                            if (targetElement) {
+                                targetElement.dispatchEvent(new MouseEvent("mouseup", {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    view: window,
+                                    clientX: cursorRef.current.x,
+                                    clientY: cursorRef.current.y
+                                }));
+                            }
+
+                            if (isHolding) {
+                                console.log("Hand Tracking: Triggering Spacebar Up (Release)");
+                                window.dispatchEvent(new KeyboardEvent("keyup", {
+                                    code: "Space",
+                                    key: " ",
+                                    bubbles: true
+                                }));
+                            } else {
                                 if (targetElement) {
-                                    targetElement.dispatchEvent(new MouseEvent("mouseup", {
+                                    targetElement.dispatchEvent(new MouseEvent("click", {
                                         bubbles: true,
                                         cancelable: true,
                                         view: window,
@@ -341,40 +343,23 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                                         clientY: cursorRef.current.y
                                     }));
                                 }
-
-                                if (isHolding) {
-                                    console.log("Hand Tracking: Triggering Spacebar Up (Release)");
-                                    window.dispatchEvent(new KeyboardEvent("keyup", {
-                                        code: "Space",
-                                        key: " ",
-                                        bubbles: true
-                                    }));
-                                } else {
-                                    if (targetElement) {
-                                        targetElement.dispatchEvent(new MouseEvent("click", {
-                                            bubbles: true,
-                                            cancelable: true,
-                                            view: window,
-                                            clientX: cursorRef.current.x,
-                                            clientY: cursorRef.current.y
-                                        }));
-                                    }
-                                }
-
-                                pinchStateRef.current.isPinching = false;
-                                pinchStateRef.current.isHolding = false;
                             }
+
+                            pinchStateRef.current.isPinching = false;
+                            pinchStateRef.current.isHolding = false;
                         }
                     }
                 }
-            }
+            } else {
+                // Hand lost or wrong hand
+                // Optionally reset pinching state to avoid stuck holds
+                // But be careful not to trigger clicks if hand just flickered
 
-            canvasCtx.restore();
-        } else {
-            // Clear canvas if no model simply to be clean
-            const ctx = canvasRef.current.getContext("2d");
-            if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                // For now, do nothing.
+            }
         }
+
+        canvasCtx.restore();
 
         requestRef.current = requestAnimationFrame(predict);
     }, [handLandmarker, isTracking, targetHand]);
@@ -467,49 +452,49 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     )}
                 </AnimatePresence>
 
-                {/* Video Feed - Always rendered but visibility controlled */}
-                <motion.div
-                    className="relative rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm"
-                    initial={false}
-                    animate={{
-                        opacity: showCamera ? 1 : 0,
-                        height: showCamera ? "auto" : 0,
-                        scale: showCamera ? 1 : 0.8,
-                        pointerEvents: showCamera ? "auto" : "none"
-                    }}
-                    transition={{ duration: 0.3 }}
-                >
-                    <div className="relative w-64 h-48">
-                        <video
-                            ref={setVideoRef}
-                            className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                            autoPlay
-                            playsInline
-                            muted
-                        />
-                        <canvas
-                            ref={canvasRef}
-                            className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                        />
-                        {/* Status Indicator */}
-                        <div className={`absolute top-2 left-2 w-2 h-2 rounded-full transition-colors duration-500
-                    ${isTracking && handLandmarker ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" :
-                                isModelLoading ? "bg-yellow-500 animate-pulse" : "bg-red-500"}`}
-                        />
+                {/* Video Feed */}
+                <AnimatePresence>
+                    {showCamera && (
+                        <motion.div
+                            className="relative rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm"
+                            initial={{ opacity: 0, height: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, height: "auto", scale: 1 }}
+                            exit={{ opacity: 0, height: 0, scale: 0.8 }}
+                        >
+                            <div className="relative w-64 h-48">
+                                <video
+                                    ref={videoRef}
+                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                />
+                                <canvas
+                                    ref={canvasRef}
+                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                                />
+                                {/* Status Indicator */}
+                                <div className={`absolute top-2 left-2 w-2 h-2 rounded-full ${isTracking && handLandmarker ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"}`} />
 
-                        {isModelLoading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                                <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                {cameraError && (
+                                    <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-red-400 text-sm bg-black/80">
+                                        {cameraError}
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                        {cameraError && (
-                            <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-red-400 text-sm bg-black/80">
-                                {cameraError}
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
+                {/* Hidden elements when camera is hidden but tracking is on */}
+                <div className="fixed opacity-0 pointer-events-none">
+                    {!showCamera && (
+                        <>
+                            <video ref={videoRef} autoPlay playsInline muted />
+                            <canvas ref={canvasRef} />
+                        </>
+                    )}
+                </div>
             </motion.div>
 
             {/* Virtual Cursor */}
