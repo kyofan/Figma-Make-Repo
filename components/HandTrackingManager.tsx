@@ -34,7 +34,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     const [isTracking, setIsTracking] = useState(true);
     const [targetHand, setTargetHand] = useState<"Right" | "Left">("Left");
     const [trackingMode, setTrackingMode] = useState<"Center" | "Relative">("Center");
-    const [sensitivity, setSensitivity] = useState(50); // 1-100 linear value
+    const [sensitivity, setSensitivity] = useState(25); // 1-100 linear value, default 25 = 2.65x multiplier
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Tracking Logic Refs
@@ -50,7 +50,9 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
         isPinching: false,
         startTime: 0,
         isHolding: false,
-        lastPinchTime: 0  // Track when pinch was last detected
+        lastPinchTime: 0,  // Track when pinch was last detected
+        justReleasedHold: false,  // Track if we just released a hold gesture
+        holdReleaseTime: 0  // Track when hold was released
     });
     const lastHoveredElement = useRef<Element | null>(null);
 
@@ -225,8 +227,10 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     const indexTip = landmarks[8];  // Still used for pinch detection
                     const thumbTip = landmarks[4];
 
-                    // Apply sensitivity scaling (1-100 slider → 0.5x to 2.5x multiplier)
-                    const sensitivityMultiplier = 0.5 + (sensitivity / 100) * 2;
+                    // Apply sensitivity scaling (1-100 slider → 0.2x to 10x multiplier)
+                    // Lower = precise but slow, Higher = fast but less precise
+                    // Default 70 = 5x multiplier for comfortable use with minimal arm movement
+                    const sensitivityMultiplier = 0.2 + (sensitivity / 100) * 9.8;
 
                     let targetX, targetY;
 
@@ -348,22 +352,32 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                         } else {
                             const duration = now - startTime;
                             if (duration > 300 && !isHolding) {
-                                console.log("Hand Tracking: Spacebar Down (Hold Detected)");
-                                window.dispatchEvent(new KeyboardEvent("keydown", {
-                                    code: "Space",
-                                    key: " ",
-                                    bubbles: true,
-                                    repeat: false
-                                }));
-                                pinchStateRef.current.isHolding = true;
+                                // Check if hovering over text editor area (for both word editing and pure dictation)
+                                const isOverTextContainer = targetElement?.closest('.text-editor-container') !== null ||
+                                    targetElement?.classList.contains('text-editor-container');
+
+                                console.log(`Hold detected - over text container: ${isOverTextContainer}, element:`, targetElement?.className);
+
+                                if (isOverTextContainer) {
+                                    console.log("Hand Tracking: Spacebar Down (Hold Detected)");
+                                    window.dispatchEvent(new KeyboardEvent("keydown", {
+                                        code: "Space",
+                                        key: " ",
+                                        bubbles: true,
+                                        repeat: false
+                                    }));
+                                    pinchStateRef.current.isHolding = true;
+                                } else {
+                                    console.log("Hand Tracking: Hold detected but not over text area - ignoring");
+                                }
                             }
                         }
                     } else {
                         // Not currently pinching - check if enough time has passed since last pinch
                         const timeSinceLastPinch = now - pinchStateRef.current.lastPinchTime;
 
-                        if (wasPinching && timeSinceLastPinch > 150) {
-                            // Pinch has been absent for 150ms - confirm release
+                        if (wasPinching && timeSinceLastPinch > 200) {
+                            // Pinch has been absent for 200ms - confirm release
                             if (targetElement) {
                                 targetElement.dispatchEvent(new MouseEvent("mouseup", {
                                     bubbles: true,
@@ -381,20 +395,37 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                                     key: " ",
                                     bubbles: true
                                 }));
+
+                                // Mark that we just released a hold gesture
+                                pinchStateRef.current.justReleasedHold = true;
+                                pinchStateRef.current.holdReleaseTime = now;
                             } else {
-                                if (targetElement) {
-                                    targetElement.dispatchEvent(new MouseEvent("click", {
-                                        bubbles: true,
-                                        cancelable: true,
-                                        view: window,
-                                        clientX: cursorRef.current.x,
-                                        clientY: cursorRef.current.y
-                                    }));
+                                // Check if we recently released a hold gesture
+                                const timeSinceHoldRelease = now - pinchStateRef.current.holdReleaseTime;
+
+                                // Only fire click if we didn't just release a hold (within 300ms)
+                                if (!pinchStateRef.current.justReleasedHold || timeSinceHoldRelease > 300) {
+                                    if (targetElement) {
+                                        targetElement.dispatchEvent(new MouseEvent("click", {
+                                            bubbles: true,
+                                            cancelable: true,
+                                            view: window,
+                                            clientX: cursorRef.current.x,
+                                            clientY: cursorRef.current.y
+                                        }));
+                                    }
                                 }
                             }
 
                             pinchStateRef.current.isPinching = false;
                             pinchStateRef.current.isHolding = false;
+
+                            // Clear the hold release flag after a delay
+                            if (pinchStateRef.current.justReleasedHold) {
+                                setTimeout(() => {
+                                    pinchStateRef.current.justReleasedHold = false;
+                                }, 300);
+                            }
                         }
                     }
                 }

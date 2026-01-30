@@ -38,11 +38,16 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   }, [focusedWordIndex, lockedWordIndex]);
 
   // Refs to track current state for event handlers (avoiding stale closures)
+  const textRef = useRef(text);
   const wordsRef = useRef(words);
   const editHistoryRef = useRef(editHistory);
   const historyIndexRef = useRef(historyIndex);
 
   // Update refs when state changes
+  useEffect(() => {
+    textRef.current = text;
+  }, [text]);
+
   useEffect(() => {
     wordsRef.current = words;
   }, [words]);
@@ -206,10 +211,13 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       console.log(
         `KeyDown: ${e.code}, isListening: ${isListening}, focusedWordIndex: ${focusedWordIndex}, lockedWordIndex: ${lockedWordIndex}`,
       );
-      if (
-        e.code === "Space" &&
-        !isListening
-      ) {
+
+      if (e.code === "Space" && !isListening) {
+        const hasWordSelected = focusedWordIndex !== null || lockedWordIndex !== null;
+        console.log(`Spacebar pressed - hasWordSelected: ${hasWordSelected}`);
+
+        // Always allow spacebar - HandTrackingManager validates text container before dispatch
+        // The onend handler will route to semantic edit or dictation based on activeWordIndexRef
         e.preventDefault();
         console.log("Starting listening from spacebar...");
         startListening();
@@ -668,19 +676,26 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   const appendDictation = (transcript: string) => {
     if (!transcript.trim()) return;
 
+    // Use ref to get fresh text value (avoid stale closure)
+    const currentText = textRef.current;
+    const currentHistory = editHistoryRef.current;
+    const currentHistoryIndex = historyIndexRef.current;
+
+    console.log(`appendDictation - Current text: "${currentText}", Adding: "${transcript}"`);
+
     // Check if we need a space prefix
-    const needsSpace = text.trim().length > 0 && !/\s$/.test(text);
+    const needsSpace = currentText.trim().length > 0 && !/\s$/.test(currentText);
     const prefix = needsSpace ? " " : "";
 
-    const newText = text + prefix + transcript.trim();
+    const newText = currentText + prefix + transcript.trim();
 
-    // Split and update state
-    const wordArray = newText.match(/\S+|\s+/g) || [];
-    setWords(wordArray);
+    console.log(`appendDictation - New text: "${newText}"`);
+
+    // Update state (setText will trigger useEffect to update words)
     setText(newText);
 
     // History
-    const newHistory = [...editHistory.slice(0, historyIndex + 1), newText];
+    const newHistory = [...currentHistory.slice(0, currentHistoryIndex + 1), newText];
     setEditHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
 
@@ -700,7 +715,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
             return (
               <span
                 key={index}
-                className={`word-span relative ${word.trim() === "" ? "whitespace-pre" : "inline"} ${isActive && word.trim() !== "" ? "text-blue-400 font-normal" : ""}`}
+                className={`word-span relative ${word.trim() === "" ? "whitespace-pre" : "inline-block py-1.5 rounded-md cursor-pointer transition-all duration-150"} ${isActive && word.trim() !== "" ? "text-blue-400 font-normal bg-blue-500/10 scale-105" : word.trim() !== "" ? "hover:bg-white/5" : ""}`}
                 onMouseEnter={() => {
                   if (
                     word.trim() === "" ||
@@ -751,7 +766,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
                 {word}
                 {isActive && word.trim() !== "" && (
                   <motion.div
-                    className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-400/70 shadow-[0_0_8px_rgba(59,130,246,0.6)]"
+                    className="absolute bottom-0 left-0 w-full h-1 bg-blue-400/70 shadow-[0_0_8px_rgba(59,130,246,0.6)] rounded-full"
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
                     transition={{ duration: 0.2 }}
