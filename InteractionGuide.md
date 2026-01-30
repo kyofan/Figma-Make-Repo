@@ -155,7 +155,7 @@ When you activate voice input:
 
 **1. Activation** (you hold spacebar/pinch):
 - Voice recognition starts immediately
-- Green pulsing circle appears in the info panel
+- Blue pulsing circle appears in the info panel
 - Feedback shows: "Listening... (selected word: [word])"
 
 **2. Speaking** (voice is being processed):
