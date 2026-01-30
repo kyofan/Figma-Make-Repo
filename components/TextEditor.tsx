@@ -28,6 +28,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   const recognitionRef = useRef<any>(null);
   const activeWordIndexRef = useRef<number | null>(null);
   const isListeningRef = useRef<boolean>(false);
+  const isStartingRef = useRef<boolean>(false); // Race condition fix
   const realTimeSpeechTextRef = useRef<string>("");
 
   // Helper function to update activeWordIndexRef
@@ -85,7 +86,11 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       recognitionRef.current.onstart = () => {
         console.log("Speech recognition started");
         isListeningRef.current = true;
+        isStartingRef.current = false; // Successfully started
         setIsListening(true);
+        setTranscript("");
+        realTimeSpeechTextRef.current = "";
+        setShowFeedback(true);
 
         // Make sure we have the latest active word at start
         console.log(`Active word at start: ${activeWordIndexRef.current}`);
@@ -213,6 +218,16 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       );
 
       if (e.code === "Space" && !isListening) {
+        // Prevent hijacking if user is typing elsewhere (though we don't have other inputs yet)
+        // Only hijack if body is active OR we are explicitly over the text container
+        // Also allow if it's a generated event from HandTrackingManager
+        if (
+          document.activeElement !== document.body &&
+          !textContainerRef.current?.contains(document.activeElement)
+        ) {
+          return;
+        }
+
         const hasWordSelected = focusedWordIndex !== null || lockedWordIndex !== null;
         console.log(`Spacebar pressed - hasWordSelected: ${hasWordSelected}`);
 
@@ -295,11 +310,13 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   const startListening = () => {
     // activeWordIndexRef.current can be null (pure dictation)
 
-    // Make sure we're not already listening
-    if (isListeningRef.current) {
-      console.log("Already listening, ignoring start request");
+    // Make sure we're not already listening or in the process of starting
+    if (isListeningRef.current || isStartingRef.current) {
+      console.log("Already listening or starting, ignoring start request");
       return;
     }
+
+    isStartingRef.current = true; // Set starting flag
 
     console.log(`Starting listening. Target word: ${activeWordIndexRef.current !== null ? activeWordIndexRef.current : "None (Pure Dictation)"}`);
 
@@ -307,6 +324,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     if (!recognitionRef.current) {
       console.log("Speech recognition not available, simulating");
       isListeningRef.current = true;
+      isStartingRef.current = false; // Simulation starts immediately
       setIsListening(true);
 
       if (onListeningChange) {

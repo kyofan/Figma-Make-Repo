@@ -142,8 +142,8 @@ Both methods work identically:
 
 | Method | Trigger | Visual | Release |
 |--------|---------|--------|---------|
-| **Keyboard** | Hold Spacebar | Green pulsing indicator appears | Release Spacebar |
-| **Hand Gesture** | Hold pinch for 300ms | Same green indicator | Release pinch |
+| **Keyboard** | Hold Spacebar | Blue pulsing indicator appears | Release Spacebar |
+| **Hand Gesture** | Hold pinch for 300ms | Same blue indicator | Release pinch |
 
 **Important**: Voice input requires being in the text area:
 - **Word editing**: Must hover over a word (or have word locked)

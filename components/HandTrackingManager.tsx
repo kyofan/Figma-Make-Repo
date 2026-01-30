@@ -569,48 +569,47 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                 </AnimatePresence>
 
                 {/* Video Feed */}
-                <AnimatePresence>
-                    {showCamera && (
-                        <motion.div
-                            className="relative rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm"
-                            initial={{ opacity: 0, height: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, height: "auto", scale: 1 }}
-                            exit={{ opacity: 0, height: 0, scale: 0.8 }}
-                        >
-                            <div className="relative w-64 h-48">
-                                <video
-                                    ref={videoRef}
-                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                />
-                                <canvas
-                                    ref={canvasRef}
-                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                                />
-                                {/* Status Indicator */}
-                                <div className={`absolute top-2 left-2 w-2 h-2 rounded-full ${isTracking && handLandmarker ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"}`} />
+                {/* Video Feed - Always rendered to keep stream alive, toggled via visibility */}
+                <motion.div
+                    className="relative rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm"
+                    initial={false}
+                    animate={{
+                        opacity: showCamera ? 1 : 0,
+                        height: showCamera ? "auto" : 0,
+                        scale: showCamera ? 1 : 0.8,
+                        marginBottom: showCamera ? 0 : 0
+                    }}
+                    transition={{ duration: 0.3 }}
+                    style={{
+                        pointerEvents: showCamera ? "auto" : "none",
+                        visibility: showCamera ? "visible" : "hidden",
+                        display: showCamera ? "block" : "none" // We use display none after animation to ensure layout collapses? No, motion handles height. 
+                    }}
+                >
+                    <div className="relative w-64 h-48">
+                        <video
+                            ref={videoRef}
+                            className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                            autoPlay
+                            playsInline
+                            muted
+                        />
+                        <canvas
+                            ref={canvasRef}
+                            className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                        />
+                        {/* Status Indicator */}
+                        <div className={`absolute top-2 left-2 w-2 h-2 rounded-full ${isTracking && handLandmarker ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"}`} />
 
-                                {cameraError && (
-                                    <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-red-400 text-sm bg-black/80">
-                                        {cameraError}
-                                    </div>
-                                )}
+                        {cameraError && (
+                            <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-red-400 text-sm bg-black/80">
+                                {cameraError}
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        )}
+                    </div>
+                </motion.div>
 
-                {/* Hidden elements when camera is hidden but tracking is on */}
-                <div className="fixed opacity-0 pointer-events-none">
-                    {!showCamera && (
-                        <>
-                            <video ref={videoRef} autoPlay playsInline muted />
-                            <canvas ref={canvasRef} />
-                        </>
-                    )}
-                </div>
+                {/* Removed duplicate hidden elements since we now keep the main ones mounted */}
             </motion.div>
 
             {/* Virtual Cursor */}
