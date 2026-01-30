@@ -11,6 +11,7 @@ const options: { label: string; value: BackgroundType }[] = [
   { label: "Classic (VR)", value: "original" },
   { label: "Workspace (MR)", value: "bg" },
   { label: "Nightlife (AR)", value: "bg1" },
+  { label: "Parallax", value: "parallax" },
 ];
 
 export const BackgroundToggle: React.FC<BackgroundToggleProps> = ({
