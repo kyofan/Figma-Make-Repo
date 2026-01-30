@@ -38,11 +38,16 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   }, [focusedWordIndex, lockedWordIndex]);
 
   // Refs to track current state for event handlers (avoiding stale closures)
+  const textRef = useRef(text);
   const wordsRef = useRef(words);
   const editHistoryRef = useRef(editHistory);
   const historyIndexRef = useRef(historyIndex);
 
   // Update refs when state changes
+  useEffect(() => {
+    textRef.current = text;
+  }, [text]);
+
   useEffect(() => {
     wordsRef.current = words;
   }, [words]);
@@ -128,19 +133,20 @@ export const TextEditor: React.FC<TextEditorProps> = ({
           `Speech end - Word index: ${currentActiveWord}, Transcript: "${currentTranscript}"`,
         );
 
-        // Apply the edit if we have a transcript and selected word
-        if (currentTranscript && currentActiveWord !== null) {
-          console.log(
-            `Applying edit to word ${currentActiveWord}: "${currentTranscript}"`,
-          );
-          applySemanticEdit(currentActiveWord, currentTranscript);
+        // Apply the edit if we have a transcript
+        if (currentTranscript) {
+          if (currentActiveWord !== null) {
+            console.log(
+              `Applying edit to word ${currentActiveWord}: "${currentTranscript}"`,
+            );
+            applySemanticEdit(currentActiveWord, currentTranscript);
+          } else {
+            // Pure dictation (append or insert)
+            console.log(`Pure dictation: "${currentTranscript}"`);
+            appendDictation(currentTranscript);
+          }
         } else {
-          showTemporaryFeedback("No edit applied - missing word or speech");
-          console.log("No edit applied:", {
-            activeWord: currentActiveWord,
-            transcript: currentTranscript,
-            words: wordsRef.current,
-          });
+          showTemporaryFeedback("No speech detected");
         }
 
         // Reset state
@@ -205,11 +211,13 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       console.log(
         `KeyDown: ${e.code}, isListening: ${isListening}, focusedWordIndex: ${focusedWordIndex}, lockedWordIndex: ${lockedWordIndex}`,
       );
-      if (
-        e.code === "Space" &&
-        !isListening &&
-        (focusedWordIndex !== null || lockedWordIndex !== null)
-      ) {
+
+      if (e.code === "Space" && !isListening) {
+        const hasWordSelected = focusedWordIndex !== null || lockedWordIndex !== null;
+        console.log(`Spacebar pressed - hasWordSelected: ${hasWordSelected}`);
+
+        // Always allow spacebar - HandTrackingManager validates text container before dispatch
+        // The onend handler will route to semantic edit or dictation based on activeWordIndexRef
         e.preventDefault();
         console.log("Starting listening from spacebar...");
         startListening();
@@ -263,10 +271,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
   // Show spacebar hint when word is focused or locked
   useEffect(() => {
-    if (
-      (focusedWordIndex !== null || lockedWordIndex !== null) &&
-      !isListening
-    ) {
+    if (!isListening) {
       setSpacebarHintVisible(true);
     } else {
       setSpacebarHintVisible(false);
@@ -288,10 +293,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
   // Start speech recognition
   const startListening = () => {
-    if (activeWordIndexRef.current === null) {
-      showTemporaryFeedback("Please look at a word first");
-      return;
-    }
+    // activeWordIndexRef.current can be null (pure dictation)
 
     // Make sure we're not already listening
     if (isListeningRef.current) {
@@ -299,7 +301,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       return;
     }
 
-    console.log(`Starting listening for word: ${activeWordIndexRef.current}`);
+    console.log(`Starting listening. Target word: ${activeWordIndexRef.current !== null ? activeWordIndexRef.current : "None (Pure Dictation)"}`);
 
     // If Web Speech API is not available, use simulation
     if (!recognitionRef.current) {
@@ -670,6 +672,36 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     }
   };
 
+  // Pure dictation: Append text to the end
+  const appendDictation = (transcript: string) => {
+    if (!transcript.trim()) return;
+
+    // Use ref to get fresh text value (avoid stale closure)
+    const currentText = textRef.current;
+    const currentHistory = editHistoryRef.current;
+    const currentHistoryIndex = historyIndexRef.current;
+
+    console.log(`appendDictation - Current text: "${currentText}", Adding: "${transcript}"`);
+
+    // Check if we need a space prefix
+    const needsSpace = currentText.trim().length > 0 && !/\s$/.test(currentText);
+    const prefix = needsSpace ? " " : "";
+
+    const newText = currentText + prefix + transcript.trim();
+
+    console.log(`appendDictation - New text: "${newText}"`);
+
+    // Update state (setText will trigger useEffect to update words)
+    setText(newText);
+
+    // History
+    const newHistory = [...currentHistory.slice(0, currentHistoryIndex + 1), newText];
+    setEditHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+
+    showTemporaryFeedback("Text appended");
+  };
+
   return (
     <div className="relative w-full h-full flex flex-col items-center">
       <div
@@ -683,7 +715,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
             return (
               <span
                 key={index}
-                className={`word-span relative ${word.trim() === "" ? "whitespace-pre" : "inline"} ${isActive && word.trim() !== "" ? "text-blue-400 font-normal" : ""}`}
+                className={`word-span relative ${word.trim() === "" ? "whitespace-pre" : "inline-block py-1.5 rounded-md cursor-pointer transition-all duration-150"} ${isActive && word.trim() !== "" ? "text-blue-400 font-normal bg-blue-500/10 scale-105" : word.trim() !== "" ? "hover:bg-white/5" : ""}`}
                 onMouseEnter={() => {
                   if (
                     word.trim() === "" ||
@@ -704,11 +736,37 @@ export const TextEditor: React.FC<TextEditorProps> = ({
                   console.log(`Unfocusing word ${index}`);
                   setFocusedWordIndex(null);
                 }}
+                onClick={() => {
+                  if (word.trim() === "" || isListening) return;
+                  console.log(`Deleting word ${index}: "${word.trim()}"`);
+                  // Delete the word
+                  const newWords = [...words];
+                  newWords[index] = ""; // Remove the word
+                  // Clean up and rebuild text
+                  const cleanedWords = newWords.filter((w, i) => {
+                    // Keep word if not empty, or if it's a space between two non-empty words
+                    if (w.trim() !== "") return true;
+                    if (w === "") return false;
+                    // Check if space is needed
+                    const prevNonEmpty = newWords.slice(0, i).some(w => w.trim() !== "");
+                    const nextNonEmpty = newWords.slice(i + 1).some(w => w.trim() !== "");
+                    return prevNonEmpty && nextNonEmpty;
+                  });
+                  const newText = cleanedWords.join("").replace(/\s+/g, " ").trim();
+                  setText(newText);
+                  // Add to history
+                  const newHistory = [...editHistory.slice(0, historyIndex + 1), newText];
+                  setEditHistory(newHistory);
+                  setHistoryIndex(newHistory.length - 1);
+                  setFocusedWordIndex(null);
+                  setLockedWordIndex(null);
+                  showTemporaryFeedback(`Deleted "${word.trim()}"`);
+                }}
               >
                 {word}
                 {isActive && word.trim() !== "" && (
                   <motion.div
-                    className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-400/70 shadow-[0_0_8px_rgba(59,130,246,0.6)]"
+                    className="absolute bottom-0 left-0 w-full h-1 bg-blue-400/70 shadow-[0_0_8px_rgba(59,130,246,0.6)] rounded-full"
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
                     transition={{ duration: 0.2 }}

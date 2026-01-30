@@ -11,6 +11,7 @@ import {
   BackgroundType,
 } from "./components/BackgroundManager";
 import { BackgroundToggle } from "./components/BackgroundToggle";
+import { HandTrackingManager } from "./components/HandTrackingManager";
 
 export default function SpatialTextInput({
   showGazeIndicator = true,
@@ -67,6 +68,7 @@ export default function SpatialTextInput({
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden">
       <BackgroundManager type={backgroundType} />
+      <HandTrackingManager />
 
       <motion.div
         className="w-full max-w-4xl z-10"
@@ -135,7 +137,7 @@ export default function SpatialTextInput({
         animate={{ opacity: 0.7 }}
         transition={{ delay: 1 }}
       >
-        v1.2.2
+        v2.0.0
       </motion.div>
     </div>
   );
