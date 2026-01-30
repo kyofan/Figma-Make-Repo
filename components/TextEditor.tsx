@@ -29,6 +29,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   const activeWordIndexRef = useRef<number | null>(null);
   const isListeningRef = useRef<boolean>(false);
   const isStartingRef = useRef<boolean>(false); // Race condition fix
+  const stopRequestedRef = useRef<boolean>(false); // Queue stop request if starting
   const realTimeSpeechTextRef = useRef<string>("");
 
   // Helper function to update activeWordIndexRef
@@ -87,6 +88,14 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         console.log("Speech recognition started");
         isListeningRef.current = true;
         isStartingRef.current = false; // Successfully started
+
+        // Check if stop was requested while we were starting
+        if (stopRequestedRef.current) {
+          console.log("Aborting start due to queued stop request");
+          stopListening();
+          return;
+        }
+
         setIsListening(true);
         setTranscript("");
         realTimeSpeechTextRef.current = "";
@@ -337,17 +346,27 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
     // Start recognition
     try {
-      recognitionRef.current.start();
+      isStartingRef.current = true; // Mark as starting
+      stopRequestedRef.current = false; // Reset stop request flag
+      recognitionRef.current.start(); // Triggers onstart
     } catch (error) {
       console.error("Error starting speech recognition:", error);
       showTemporaryFeedback("Error starting speech recognition");
       isListeningRef.current = false;
       setIsListening(false);
+      isStartingRef.current = false; // Reset starting flag on error
     }
   };
 
   // Stop speech recognition
   const stopListening = (applyChanges = true) => {
+    // Check if we are currently in the starting phase
+    if (isStartingRef.current) {
+      console.log("Stop requested while starting - queuing stop");
+      stopRequestedRef.current = true;
+      return;
+    }
+
     if (!isListeningRef.current) {
       console.log("Not listening, ignoring stop request");
       return;
