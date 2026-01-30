@@ -1,15 +1,27 @@
 import React from "react";
-import { motion } from "motion/react";
+import { motion, MotionValue, useTransform, useSpring } from "motion/react";
 
-export type BackgroundType = "original" | "bg" | "bg1";
+export type BackgroundType = "original" | "bg" | "bg1" | "parallax";
 
 interface BackgroundManagerProps {
   type: BackgroundType;
+  headX: MotionValue<number>;
+  headY: MotionValue<number>;
 }
 
 export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   type,
+  headX,
+  headY,
 }) => {
+  // Smooth the raw input
+  const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
+  const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
+
+  // Transform to pixel offset
+  const parallaxX = useTransform(smoothX, (value) => value * 50);
+  const parallaxY = useTransform(smoothY, (value) => value * -50);
+
   if (type === "original") {
     return (
       <>
@@ -49,6 +61,31 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
           ))}
         </div>
       </>
+    );
+  }
+
+  // Parallax Mode
+  if (type === "parallax") {
+    return (
+      <div className="absolute inset-0 z-0 overflow-hidden bg-black">
+        <motion.div
+            className="absolute inset-[-5%] w-[110%] h-[110%]"
+            style={{
+                x: parallaxX,
+                y: parallaxY
+            }}
+        >
+             <img
+                src="media/bg.webp"
+                alt="Background"
+                className="w-full h-full object-cover opacity-80"
+            />
+        </motion.div>
+
+        {/* Vignette / Glass Reflection effect */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none mix-blend-overlay" />
+        <div className="absolute inset-0 bg-black/40" />
+      </div>
     );
   }
 
