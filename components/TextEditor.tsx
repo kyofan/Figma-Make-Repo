@@ -165,6 +165,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
         // Reset state
         isListeningRef.current = false;
+        isStartingRef.current = false; // Safety reset
         setIsListening(false);
         setTranscript("");
         realTimeSpeechTextRef.current = "";
@@ -178,6 +179,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       recognitionRef.current.onerror = (event: any) => {
         console.error(`Speech recognition error: ${event.error}`);
         isListeningRef.current = false;
+        isStartingRef.current = false; // Safety reset
         setIsListening(false);
 
         showTemporaryFeedback(`Error: ${event.error}`);
