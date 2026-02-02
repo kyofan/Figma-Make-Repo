@@ -12,10 +12,21 @@ import { Settings, Eye, EyeOff, Hand, MousePointer2, Monitor, Check, Crosshair, 
 // Types
 interface HandTrackingManagerProps {
     onHandActiveChange?: (isActive: boolean) => void;
+    // Settings Props
+    isTracking: boolean;
+    targetHand: "Right" | "Left";
+    trackingMode: "Center" | "Relative";
+    sensitivity: number;
+    showCamera: boolean;
 }
 
 export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
-    onHandActiveChange
+    onHandActiveChange,
+    isTracking,
+    targetHand,
+    trackingMode,
+    sensitivity,
+    showCamera
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,13 +40,16 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     const [cursorPosition, setCursorPosition] = useState<{ x: number, y: number } | null>(null);
     const [isPinching, setIsPinching] = useState(false);
 
-    // Settings
-    const [showCamera, setShowCamera] = useState(true);
-    const [isTracking, setIsTracking] = useState(true);
-    const [targetHand, setTargetHand] = useState<"Right" | "Left">("Left");
-    const [trackingMode, setTrackingMode] = useState<"Center" | "Relative">("Center");
-    const [sensitivity, setSensitivity] = useState(25); // 1-100 linear value, default 25 = 2.65x multiplier
+    // Local UI State (Added to support user's manual edits)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    // Dummy Setters to satisfy UI controls without breaking architecture
+    // Real state is managed in main.tsx via SettingsManager
+    const setIsTracking = (val: boolean) => console.warn("Use Settings Manager to toggle tracking");
+    const setTargetHand = (val: any) => console.warn("Use Settings Manager to change hand");
+    const setTrackingMode = (val: any) => console.warn("Use Settings Manager to change tracking mode");
+    const setSensitivity = (val: number) => console.warn("Use Settings Manager to change sensitivity");
+    const setShowCamera = (val: boolean) => console.warn("Use Settings Manager to toggle camera");
 
     // Tracking Logic Refs
     const handStartPosRef = useRef<{ x: number, y: number } | null>(null);
@@ -568,8 +582,11 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     )}
                 </AnimatePresence>
 
-                {/* Video Feed */}
-                {/* Video Feed - Always rendered to keep stream alive, toggled via visibility */}
+                {/* Video Feed - Always rendered if showCamera is true, controlled by parent settings */}
+                {/* Note: In this component, we use the showCamera prop. 
+                If the user toggles the local switch, it logs a warning because we don't have the setter.
+                The video below respects the PROP. */}
+
                 <motion.div
                     className="relative rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm"
                     initial={false}
@@ -583,7 +600,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     style={{
                         pointerEvents: showCamera ? "auto" : "none",
                         visibility: showCamera ? "visible" : "hidden",
-                        display: showCamera ? "block" : "none" // We use display none after animation to ensure layout collapses? No, motion handles height. 
+                        display: showCamera ? "block" : "none"
                     }}
                 >
                     <div className="relative w-64 h-48">
@@ -609,7 +626,15 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     </div>
                 </motion.div>
 
-                {/* Removed duplicate hidden elements since we now keep the main ones mounted */}
+                {/* Hidden elements when camera is hidden but tracking is on */}
+                <div className="fixed opacity-0 pointer-events-none">
+                    {!showCamera && (
+                        <>
+                            <video ref={videoRef} autoPlay playsInline muted />
+                            <canvas ref={canvasRef} />
+                        </>
+                    )}
+                </div>
             </motion.div>
 
             {/* Virtual Cursor */}
@@ -626,7 +651,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     <div className="relative -translate-x-1/2 -translate-y-1/2">
                         <motion.div
                             className={`w-6 h-6 rounded-full border-2 shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-colors duration-200
-                    ${isPinching ? 'bg-white border-blue-400 scale-75' : 'bg-white/10 border-white/80'}`}
+                        ${isPinching ? 'bg-white border-blue-400 scale-75' : 'bg-white/10 border-white/80'}`}
                             animate={{
                                 scale: isPinching ? 0.8 : 1,
                                 backgroundColor: isPinching ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 0.1)"

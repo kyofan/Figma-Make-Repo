@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { defineProperties } from "figma:react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { TextEditor } from "./components/TextEditor";
+import { TextEditor, TextEditorHandle } from "./components/TextEditor";
 import { GazeIndicator } from "./components/GazeIndicator";
 import { VoiceVisualizer, SpeechStatus } from "./components/VoiceVisualizer";
 import { InfoPanel } from "./components/InfoPanel";
@@ -11,7 +11,7 @@ import {
   BackgroundType,
 } from "./components/BackgroundManager";
 import { BackgroundToggle } from "./components/BackgroundToggle";
-import { ParallaxSettings } from "./components/ParallaxSettings";
+import { SettingsManager } from "./components/SettingsManager";
 import { HandTrackingManager } from "./components/HandTrackingManager";
 import { FaceTrackingManager } from "./components/FaceTrackingManager";
 
@@ -31,9 +31,25 @@ export default function SpatialTextInput({
     useState<BackgroundType>("original");
 
   // Parallax Settings (A/B Testing)
-  const [smoothingEnabled, setSmoothingEnabled] = useState(true);
+  // Default Smoothing to "off" (false) as requested
+  const [smoothingEnabled, setSmoothingEnabled] = useState(false);
   const [parallaxIntensity, setParallaxIntensity] = useState(50);
   const [renderMode, setRenderMode] = useState<"gltf" | "splat">("gltf");
+
+  // Hand Tracking Settings
+  const [handTrackingEnabled, setHandTrackingEnabled] = useState(true);
+  const [targetHand, setTargetHand] = useState<"Left" | "Right">("Left");
+  const [trackingMode, setTrackingMode] = useState<"Center" | "Relative">("Center");
+  const [sensitivity, setSensitivity] = useState(25);
+  const [showHandCamera, setShowHandCamera] = useState(true);
+
+  // Face Tracking Settings
+  const [faceTrackingEnabled, setFaceTrackingEnabled] = useState(true);
+  const [showFaceDebug, setShowFaceDebug] = useState(false);
+
+  // Voice Settings
+  const [simulateVoiceConfig, setSimulateVoiceConfig] = useState(false);
+  const textEditorRef = useRef<TextEditorHandle>(null);
 
   // Head Tracking State (MotionValues for performance)
   const headX = useMotionValue(0);
@@ -60,6 +76,12 @@ export default function SpatialTextInput({
     setIsListening(listening);
     if (data) {
       setSpeechData(data);
+    }
+  };
+
+  const handleSimulateVoiceCommand = (text: string) => {
+    if (textEditorRef.current) {
+      textEditorRef.current.simulateVoiceInput(text);
     }
   };
 
@@ -103,16 +125,52 @@ export default function SpatialTextInput({
         parallaxIntensity={parallaxIntensity}
         renderMode={renderMode}
       />
-      <HandTrackingManager />
-      <FaceTrackingManager onHeadMove={handleHeadMove} />
 
-      <ParallaxSettings
-        smoothingEnabled={smoothingEnabled}
-        setSmoothingEnabled={setSmoothingEnabled}
-        intensity={parallaxIntensity}
-        setIntensity={setParallaxIntensity}
+      <HandTrackingManager
+        isTracking={handTrackingEnabled}
+        targetHand={targetHand}
+        trackingMode={trackingMode}
+        sensitivity={sensitivity}
+        showCamera={showHandCamera}
+      />
+
+      <FaceTrackingManager
+        onHeadMove={handleHeadMove}
+        isTracking={faceTrackingEnabled}
+        showDebug={showFaceDebug}
+      />
+
+      <SettingsManager
+        // Parallax
+        parallaxSmoothing={smoothingEnabled}
+        setParallaxSmoothing={setSmoothingEnabled}
+        parallaxIntensity={parallaxIntensity}
+        setParallaxIntensity={setParallaxIntensity}
         renderMode={renderMode}
         setRenderMode={setRenderMode}
+
+        // Hand
+        handTrackingEnabled={handTrackingEnabled}
+        setHandTrackingEnabled={setHandTrackingEnabled}
+        targetHand={targetHand}
+        setTargetHand={setTargetHand}
+        trackingMode={trackingMode}
+        setTrackingMode={setTrackingMode}
+        sensitivity={sensitivity}
+        setSensitivity={setSensitivity}
+        showHandCamera={showHandCamera}
+        setShowHandCamera={setShowHandCamera}
+
+        // Face
+        faceTrackingEnabled={faceTrackingEnabled}
+        setFaceTrackingEnabled={setFaceTrackingEnabled}
+        showFaceDebug={showFaceDebug}
+        setShowFaceDebug={setShowFaceDebug}
+
+        // Voice
+        simulateVoiceConfig={simulateVoiceConfig}
+        setSimulateVoiceConfig={setSimulateVoiceConfig}
+        onSimulateVoiceCommand={handleSimulateVoiceCommand}
       />
 
       <motion.div
@@ -148,6 +206,7 @@ export default function SpatialTextInput({
 
         <div className="relative">
           <TextEditor
+            ref={textEditorRef}
             initialText={initialText}
             onListeningChange={handleListeningChange}
           />

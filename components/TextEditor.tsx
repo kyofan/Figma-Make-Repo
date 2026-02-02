@@ -1,16 +1,20 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { motion } from "motion/react";
 import { SpeechStatus } from "./VoiceVisualizer";
+
+export interface TextEditorHandle {
+  simulateVoiceInput: (input: string) => void;
+}
 
 interface TextEditorProps {
   initialText: string;
   onListeningChange?: (isListening: boolean, speechData?: SpeechStatus) => void;
 }
 
-export const TextEditor: React.FC<TextEditorProps> = ({
+export const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(({
   initialText,
   onListeningChange,
-}) => {
+}, ref) => {
   const [text, setText] = useState(initialText);
   const [words, setWords] = useState<string[]>([]);
   const [focusedWordIndex, setFocusedWordIndex] = useState<number | null>(null);
@@ -31,13 +35,6 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   const isStartingRef = useRef<boolean>(false); // Race condition fix
   const stopRequestedRef = useRef<boolean>(false); // Queue stop request if starting
   const realTimeSpeechTextRef = useRef<string>("");
-
-  // Helper function to update activeWordIndexRef
-  const updateActiveWordRef = useCallback(() => {
-    activeWordIndexRef.current =
-      focusedWordIndex !== null ? focusedWordIndex : lockedWordIndex;
-    console.log(`Active word updated: ${activeWordIndexRef.current}`);
-  }, [focusedWordIndex, lockedWordIndex]);
 
   // Refs to track current state for event handlers (avoiding stale closures)
   const textRef = useRef(text);
@@ -61,6 +58,21 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   useEffect(() => {
     historyIndexRef.current = historyIndex;
   }, [historyIndex]);
+
+  // Expose simulation method via ref
+  useImperativeHandle(ref, () => ({
+    simulateVoiceInput: (input: string) => {
+      simulateVoiceInput(input);
+    }
+  }));
+
+  // Helper function to update activeWordIndexRef
+  const updateActiveWordRef = useCallback(() => {
+    activeWordIndexRef.current =
+      focusedWordIndex !== null ? focusedWordIndex : lockedWordIndex;
+    console.log(`Active word updated: ${activeWordIndexRef.current}`);
+  }, [focusedWordIndex, lockedWordIndex]);
+
 
   // Initialize speech recognition once on mount
   useEffect(() => {
@@ -901,51 +913,9 @@ export const TextEditor: React.FC<TextEditorProps> = ({
             </>
           )}
         </div>
-
-        <div className="voice-simulation mt-4 w-full">
-          <p className="text-center text-white/60 mb-3 text-sm font-light">
-            Simulate Voice Commands:
-          </p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <button
-              onClick={() => simulateVoiceInput("next Tuesday")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "next Tuesday"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("at 3 PM")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "at 3 PM"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("in the conference room")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "in the conference room"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("tomorrow")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "tomorrow"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("with the design team")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "with the design team"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("online")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "online"
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
-};
+});
+
+TextEditor.displayName = "TextEditor";
