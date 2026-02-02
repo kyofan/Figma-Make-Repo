@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { defineProperties } from "figma:react";
-import { motion } from "motion/react";
+import { motion, useMotionValue } from "motion/react";
 import { TextEditor } from "./components/TextEditor";
 import { GazeIndicator } from "./components/GazeIndicator";
 import { VoiceVisualizer, SpeechStatus } from "./components/VoiceVisualizer";
@@ -12,6 +12,7 @@ import {
 } from "./components/BackgroundManager";
 import { BackgroundToggle } from "./components/BackgroundToggle";
 import { HandTrackingManager } from "./components/HandTrackingManager";
+import { FaceTrackingManager } from "./components/FaceTrackingManager";
 
 export default function SpatialTextInput({
   showGazeIndicator = true,
@@ -27,6 +28,15 @@ export default function SpatialTextInput({
   >("unknown");
   const [backgroundType, setBackgroundType] =
     useState<BackgroundType>("original");
+
+  // Head Tracking State (MotionValues for performance)
+  const headX = useMotionValue(0);
+  const headY = useMotionValue(0);
+
+  const handleHeadMove = useCallback((pos: { x: number; y: number; z: number }) => {
+    headX.set(pos.x);
+    headY.set(pos.y);
+  }, [headX, headY]);
 
   const handleListeningChange = (listening: boolean, data?: SpeechStatus) => {
     setIsListening(listening);
@@ -67,8 +77,9 @@ export default function SpatialTextInput({
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      <BackgroundManager type={backgroundType} />
+      <BackgroundManager type={backgroundType} headX={headX} headY={headY} />
       <HandTrackingManager />
+      <FaceTrackingManager onHeadMove={handleHeadMove} />
 
       <motion.div
         className="w-full max-w-4xl z-10"
@@ -137,7 +148,7 @@ export default function SpatialTextInput({
         animate={{ opacity: 0.7 }}
         transition={{ delay: 1 }}
       >
-        v2.0.0
+        v2.1.0
       </motion.div>
     </div>
   );
