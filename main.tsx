@@ -38,6 +38,16 @@ export default function SpatialTextInput({
   // Head Tracking State (MotionValues for performance)
   const headX = useMotionValue(0);
   const headY = useMotionValue(0);
+  const headZ = useMotionValue(0);
+
+  // Scene Viewport Settings (Manual Override)
+  const [sceneSettings, setSceneSettings] = useState({
+    cameraX: 0,
+    cameraY: 0,
+    cameraZ: 5,
+    rotationX: 0,
+    rotationY: 0,
+  });
 
   // UI Depth / Parallax Transforms
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
@@ -51,10 +61,16 @@ export default function SpatialTextInput({
   const uiX = useTransform(activeHeadX, (x) => x * -15); // Horizontal parallax
   const uiY = useTransform(activeHeadY, (y) => y * -15); // Vertical parallax
 
-  const handleHeadMove = useCallback((pos: { x: number; y: number; z: number }) => {
-    headX.set(pos.x);
-    headY.set(pos.y);
-  }, [headX, headY]);
+  const handleHeadMove = useCallback(
+    (pos: { x: number; y: number; z: number }) => {
+      headX.set(pos.x);
+      headY.set(pos.y);
+      // z is usually distance. We might need to scale it or just pass it raw.
+      // FaceTrackingManager returns rawZ.
+      headZ.set(pos.z);
+    },
+    [headX, headY, headZ],
+  );
 
   const handleListeningChange = (listening: boolean, data?: SpeechStatus) => {
     setIsListening(listening);
@@ -99,9 +115,11 @@ export default function SpatialTextInput({
         type={backgroundType}
         headX={headX}
         headY={headY}
+        headZ={headZ}
         smoothingEnabled={smoothingEnabled}
         parallaxIntensity={parallaxIntensity}
         renderMode={renderMode}
+        sceneSettings={sceneSettings}
       />
       <HandTrackingManager />
       <FaceTrackingManager onHeadMove={handleHeadMove} />
@@ -113,6 +131,8 @@ export default function SpatialTextInput({
         setIntensity={setParallaxIntensity}
         renderMode={renderMode}
         setRenderMode={setRenderMode}
+        sceneSettings={sceneSettings}
+        setSceneSettings={setSceneSettings}
       />
 
       <motion.div

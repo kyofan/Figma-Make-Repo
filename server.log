@@ -3,7 +3,8 @@
 > vite
 
 
-  VITE v5.4.21  ready in 318 ms
+  VITE v5.4.21  ready in 265 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
+11:30:51 PM [vite] hmr update /components/BackgroundManager.tsx, /index.css

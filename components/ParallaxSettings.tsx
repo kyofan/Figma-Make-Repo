@@ -9,6 +9,22 @@ interface ParallaxSettingsProps {
   setIntensity: (val: number) => void;
   renderMode: "gltf" | "splat";
   setRenderMode: (val: "gltf" | "splat") => void;
+  sceneSettings?: {
+    cameraX: number;
+    cameraY: number;
+    cameraZ: number;
+    rotationX: number;
+    rotationY: number;
+  };
+  setSceneSettings?: React.Dispatch<
+    React.SetStateAction<{
+      cameraX: number;
+      cameraY: number;
+      cameraZ: number;
+      rotationX: number;
+      rotationY: number;
+    }>
+  >;
 }
 
 export const ParallaxSettings: React.FC<ParallaxSettingsProps> = ({
@@ -18,6 +34,8 @@ export const ParallaxSettings: React.FC<ParallaxSettingsProps> = ({
   setIntensity,
   renderMode,
   setRenderMode,
+  sceneSettings,
+  setSceneSettings,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -110,10 +128,88 @@ export const ParallaxSettings: React.FC<ParallaxSettingsProps> = ({
                   </button>
                 </div>
                 <p className="text-[10px] text-white/30 leading-tight">
-                    GLTF: Uses /public/models/scene.glb<br/>
-                    Splat: Uses Gaussian Splatting (Photo-real)
+                  GLTF: Uses /public/models/scene.glb
+                  <br />
+                  Splat: Uses Gaussian Splatting (Photo-real)
                 </p>
               </div>
+
+              {sceneSettings && setSceneSettings && (
+                <>
+                  <div className="h-px bg-white/10" />
+                  <div className="space-y-3">
+                    <span className="text-sm font-light flex items-center gap-2">
+                      <Box size={14} /> Viewport
+                    </span>
+
+                    {/* Camera X */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[10px] font-light text-white/60">
+                        <span>Cam X</span>
+                        <span>{sceneSettings.cameraX.toFixed(1)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-10"
+                        max="10"
+                        step="0.1"
+                        value={sceneSettings.cameraX}
+                        onChange={(e) =>
+                          setSceneSettings((prev) => ({
+                            ...prev,
+                            cameraX: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                      />
+                    </div>
+
+                    {/* Camera Y */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[10px] font-light text-white/60">
+                        <span>Cam Y</span>
+                        <span>{sceneSettings.cameraY.toFixed(1)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-10"
+                        max="10"
+                        step="0.1"
+                        value={sceneSettings.cameraY}
+                        onChange={(e) =>
+                          setSceneSettings((prev) => ({
+                            ...prev,
+                            cameraY: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                      />
+                    </div>
+
+                    {/* Camera Z */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[10px] font-light text-white/60">
+                        <span>Cam Z</span>
+                        <span>{sceneSettings.cameraZ.toFixed(1)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="20"
+                        step="0.1"
+                        value={sceneSettings.cameraZ}
+                        onChange={(e) =>
+                          setSceneSettings((prev) => ({
+                            ...prev,
+                            cameraZ: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         )}

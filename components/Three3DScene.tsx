@@ -17,44 +17,69 @@ import * as THREE from "three";
 interface Three3DSceneProps {
   headX: MotionValue<number>;
   headY: MotionValue<number>;
+  headZ?: MotionValue<number>;
   smoothingEnabled: boolean;
   renderMode?: "gltf" | "splat"; // Default to gltf
+  modelUrl?: string;
+  sceneSettings?: {
+    cameraX: number;
+    cameraY: number;
+    cameraZ: number;
+    rotationX: number;
+    rotationY: number;
+  };
 }
 
 // Camera Controller Component
 const CameraController = ({
   headX,
   headY,
+  headZ,
+  sceneSettings,
 }: {
   headX: MotionValue<number>;
   headY: MotionValue<number>;
+  headZ?: MotionValue<number>;
+  sceneSettings?: Three3DSceneProps["sceneSettings"];
 }) => {
   const { camera } = useThree();
-  const initialPos = useRef(new THREE.Vector3(0, 0, 5));
-
-  useEffect(() => {
-    initialPos.current.copy(camera.position);
-  }, []);
 
   useFrame(() => {
     // Read current motion values
     const x = headX.get();
     const y = headY.get();
+    const z = headZ?.get() || 0;
 
-    // Map -1..1 to camera movement range (e.g., +/- 1 unit)
-    // Invert X because moving head right should move camera right?
-    // Let's test: Head Right -> Camera Right -> View shifts left relative to object. Correct.
+    // Base Settings (Manual Override)
+    const baseX = sceneSettings?.cameraX ?? 0;
+    const baseY = sceneSettings?.cameraY ?? 0;
+    const baseZ = sceneSettings?.cameraZ ?? 5;
+
+    // Parallax Sensitivity
     const moveRange = 2.0;
+    const depthRange = 3.0; // How much Z movement affects camera Z
 
-    // Smooth interpolation (frame-based) if needed, but the MotionValue itself might be smoothed.
-    // Since we handle smoothing in BackgroundManager via useSpring, we can just read values here.
+    // Calculate Target Positions
+    const targetX = baseX + x * moveRange;
+    const targetY = baseY + y * moveRange;
+    // For Z: If user moves head forward (negative Z in some conventions, or positive depending on mapping), camera moves forward (negative Z).
+    // Assuming 'z' input is roughly -1 (far) to 1 (close).
+    // If z is 1 (close), we want camera closer (smaller Z value).
+    const targetZ = baseZ - z * depthRange;
 
-    // We update position
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, x * moveRange, 0.1);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, y * moveRange, 0.1);
+    // Smooth interpolation
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.1);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.1);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.1);
 
-    // Look at center to create correct parallax pivot
+    // Look at center + rotation offset logic could go here
+    // For now, look at center (0,0,0) is standard for parallax
+    // To implement manual rotation, we could look at a shifted target
+    // target = (0,0,0) + rotationOffset
     camera.lookAt(0, 0, 0);
+
+    // Apply manual rotation offsets on top of lookAt if desired
+    // (Note: lookAt overwrites quaternion, so we'd need to rotate a parent or offset lookAt target)
   });
 
   return null;
@@ -118,32 +143,41 @@ const ModelLoader = ({ url }: { url: string }) => {
 export const Three3DScene: React.FC<Three3DSceneProps> = ({
   headX,
   headY,
+  headZ,
   renderMode = "gltf",
+  modelUrl,
+  sceneSettings,
 }) => {
   return (
     <div className="w-full h-full">
       <Canvas>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
-        <CameraController headX={headX} headY={headY} />
+        <CameraController
+          headX={headX}
+          headY={headY}
+          headZ={headZ}
+          sceneSettings={sceneSettings}
+        />
 
         <Suspense fallback={null}>
-            {renderMode === "gltf" && (
-                // We point to a file that might not exist yet.
-                // Users should place 'scene.glb' in 'public/models/'.
-                // For now, I'll default to the internal scene to avoid crashing until they do.
-                // I will add a toggle or logic to check.
-                // Let's use the DefaultScene by default for the demo.
-                <DefaultScene />
-                // To use real GLTF: <ModelLoader url="/models/scene.glb" />
-            )}
+          {renderMode === "gltf" && (
+            // We point to a file that might not exist yet.
+            // Users should place 'scene.glb' in 'public/models/'.
+            // For now, I'll default to the internal scene to avoid crashing until they do.
+            // I will add a toggle or logic to check.
+            // Let's use the DefaultScene by default for the demo.
+            <DefaultScene />
+            // To use real GLTF: <ModelLoader url="/models/scene.glb" />
+          )}
 
-            {renderMode === "splat" && (
-                // Sample splat URL or local file
-                 <Splat src="https://antimatter15.com/splat/nike.splat" />
-                 // User can replace with "/models/room.splat"
-            )}
+          {renderMode === "splat" && (
+            // User can replace with "/models/room.splat"
+            <Splat
+              src={modelUrl || "https://antimatter15.com/splat/nike.splat"}
+            />
+          )}
 
-            <Environment preset="city" />
+          <Environment preset="city" />
         </Suspense>
       </Canvas>
 

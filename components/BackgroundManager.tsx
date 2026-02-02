@@ -2,25 +2,36 @@ import React from "react";
 import { motion, MotionValue, useTransform, useSpring } from "motion/react";
 import { Three3DScene } from "./Three3DScene";
 
-export type BackgroundType = "original" | "bg" | "bg1" | "parallax" | "3d-scene";
+export type BackgroundType =
+  | "original"
+  | "bg"
+  | "bg1"
+  | "parallax"
+  | "3d-scene"
+  | "livingroom";
 
 interface BackgroundManagerProps {
   type: BackgroundType;
   headX: MotionValue<number>;
   headY: MotionValue<number>;
+  headZ?: MotionValue<number>;
   smoothingEnabled?: boolean;
   parallaxIntensity?: number;
   renderMode?: "gltf" | "splat";
+  sceneSettings?: any;
 }
 
 export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   type,
   headX,
   headY,
+  headZ,
   smoothingEnabled = true,
   parallaxIntensity = 50,
   renderMode = "gltf",
+  sceneSettings,
 }) => {
+  console.log("BackgroundManager rendering type:", type);
   // Smooth the raw input
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
@@ -104,12 +115,31 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   if (type === "3d-scene") {
     return (
       <div className="absolute inset-0 z-0 bg-black">
-         <Three3DScene
-            headX={effectiveX}
-            headY={effectiveY}
-            smoothingEnabled={smoothingEnabled}
-            renderMode={renderMode}
-         />
+        <Three3DScene
+          headX={effectiveX}
+          headY={effectiveY}
+          headZ={headZ}
+          smoothingEnabled={smoothingEnabled}
+          renderMode={renderMode}
+          sceneSettings={sceneSettings}
+        />
+      </div>
+    );
+  }
+
+  // Livingroom Mode
+  if (type === "livingroom") {
+    return (
+      <div className="absolute inset-0 z-0 bg-black">
+        <Three3DScene
+          headX={effectiveX}
+          headY={effectiveY}
+          headZ={headZ}
+          smoothingEnabled={smoothingEnabled}
+          renderMode="splat"
+          modelUrl="media/Livingroom-in-Taipei.ply"
+          sceneSettings={sceneSettings}
+        />
       </div>
     );
   }
