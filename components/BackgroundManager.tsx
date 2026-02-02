@@ -1,26 +1,37 @@
 import React from "react";
 import { motion, MotionValue, useTransform, useSpring } from "motion/react";
+import { Three3DScene } from "./Three3DScene";
 
-export type BackgroundType = "original" | "bg" | "bg1" | "parallax";
+export type BackgroundType = "original" | "bg" | "bg1" | "parallax" | "3d-scene";
 
 interface BackgroundManagerProps {
   type: BackgroundType;
   headX: MotionValue<number>;
   headY: MotionValue<number>;
+  smoothingEnabled?: boolean;
+  parallaxIntensity?: number;
+  renderMode?: "gltf" | "splat";
 }
 
 export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   type,
   headX,
   headY,
+  smoothingEnabled = true,
+  parallaxIntensity = 50,
+  renderMode = "gltf",
 }) => {
   // Smooth the raw input
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
 
+  // Use smoothed or raw based on setting
+  const effectiveX = smoothingEnabled ? smoothX : headX;
+  const effectiveY = smoothingEnabled ? smoothY : headY;
+
   // Transform to pixel offset
-  const parallaxX = useTransform(smoothX, (value) => value * 50);
-  const parallaxY = useTransform(smoothY, (value) => value * -50);
+  const parallaxX = useTransform(effectiveX, (value) => value * parallaxIntensity);
+  const parallaxY = useTransform(effectiveY, (value) => value * -parallaxIntensity);
 
   if (type === "original") {
     return (
@@ -85,6 +96,20 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
         {/* Vignette / Glass Reflection effect */}
         <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none mix-blend-overlay" />
         <div className="absolute inset-0 bg-black/40" />
+      </div>
+    );
+  }
+
+  // 3D Scene Mode
+  if (type === "3d-scene") {
+    return (
+      <div className="absolute inset-0 z-0 bg-black">
+         <Three3DScene
+            headX={effectiveX}
+            headY={effectiveY}
+            smoothingEnabled={smoothingEnabled}
+            renderMode={renderMode}
+         />
       </div>
     );
   }
