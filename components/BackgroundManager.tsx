@@ -1,15 +1,12 @@
 import React from "react";
 import { motion, MotionValue, useTransform, useSpring } from "motion/react";
-import { Three3DScene } from "./Three3DScene";
 import { StandaloneSplatViewer } from "./StandaloneSplatViewer";
 
 export type BackgroundType =
   | "original"
   | "bg"
   | "bg1"
-  | "parallax"
-  | "3d-scene"
-  | "livingroom";
+  | "mixed-reality";
 
 interface BackgroundManagerProps {
   type: BackgroundType;
@@ -87,50 +84,8 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
     );
   }
 
-  // Parallax Mode
-  if (type === "parallax") {
-    return (
-      <div className="absolute inset-0 z-0 overflow-hidden bg-black">
-        <motion.div
-          className="absolute inset-[-5%] w-[110%] h-[110%]"
-          style={{
-            x: parallaxX,
-            y: parallaxY
-          }}
-        >
-          <img
-            src="media/bg.webp"
-            alt="Background"
-            className="w-full h-full object-cover opacity-80"
-          />
-        </motion.div>
-
-        {/* Vignette / Glass Reflection effect */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none mix-blend-overlay" />
-        <div className="absolute inset-0 bg-black/40" />
-      </div>
-    );
-  }
-
-  // 3D Scene Mode
-  if (type === "3d-scene") {
-    return (
-      <div className="absolute inset-0 z-0 bg-black">
-        <Three3DScene
-          headX={effectiveX}
-          headY={effectiveY}
-          headZ={headZ}
-          smoothingEnabled={smoothingEnabled}
-          renderMode={renderMode}
-          sceneSettings={sceneSettings}
-          modelSettings={modelSettings}
-        />
-      </div>
-    );
-  }
-
-  // Livingroom Mode - Uses standalone viewer (working Safe Mode approach)
-  if (type === "livingroom") {
+  // Mixed Reality Mode (formerly Livingroom) - Uses standalone viewer
+  if (type === "mixed-reality") {
     return (
       <div className="absolute inset-0 z-0 bg-black">
         <StandaloneSplatViewer
@@ -138,6 +93,7 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
           className="w-full h-full"
           headX={effectiveX}
           headY={effectiveY}
+          headZ={headZ}
           smoothingEnabled={smoothingEnabled}
           onCameraUpdate={onCameraUpdate}
         />

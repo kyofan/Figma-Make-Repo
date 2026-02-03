@@ -9,10 +9,7 @@ interface BackgroundToggleProps {
 
 const options: { label: string; value: BackgroundType }[] = [
   { label: "Classic", value: "original" },
-  { label: "Workspace", value: "bg" },
-  { label: "Parallax (2D)", value: "parallax" },
-  { label: "3D Scene", value: "3d-scene" },
-  { label: "Livingroom", value: "livingroom" },
+  { label: "Mixed Reality", value: "mixed-reality" },
 ];
 
 export const BackgroundToggle: React.FC<BackgroundToggleProps> = ({

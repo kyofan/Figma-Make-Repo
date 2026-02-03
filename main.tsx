@@ -11,7 +11,6 @@ import {
   BackgroundType,
 } from "./components/BackgroundManager";
 import { BackgroundToggle } from "./components/BackgroundToggle";
-import { ParallaxSettings } from "./components/ParallaxSettings";
 import { HandTrackingManager } from "./components/HandTrackingManager";
 import { FaceTrackingManager } from "./components/FaceTrackingManager";
 
@@ -30,25 +29,16 @@ export default function SpatialTextInput({
   const [backgroundType, setBackgroundType] =
     useState<BackgroundType>("original");
 
-  // Parallax Settings (A/B Testing)
-  const [smoothingEnabled, setSmoothingEnabled] = useState(false); // Default OFF
-  const [parallaxIntensity, setParallaxIntensity] = useState(50);
-  const [renderMode, setRenderMode] = useState<"gltf" | "splat">("gltf");
-
-  // Live camera state from viewer (for display/debugging)
-  const [liveCamera, setLiveCamera] = useState({ x: 0, y: 0, z: 0 });
-  const [liveTarget, setLiveTarget] = useState({ x: 0, y: 0, z: 0 });
-
   // Head Tracking State (MotionValues for performance)
   const headX = useMotionValue(0);
   const headY = useMotionValue(0);
   const headZ = useMotionValue(0);
-  // UI Depth / Parallax Transforms
+  // UI Depth / Parallax Transforms (for 2D elements)
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
 
-  const activeHeadX = smoothingEnabled ? smoothX : headX;
-  const activeHeadY = smoothingEnabled ? smoothY : headY;
+  const activeHeadX = smoothX;
+  const activeHeadY = smoothY;
 
   const uiRotateX = useTransform(activeHeadY, (y) => y * 5); // Max 5deg tilt
   const uiRotateY = useTransform(activeHeadX, (x) => x * -5); // Max 5deg tilt
@@ -68,32 +58,6 @@ export default function SpatialTextInput({
 
   const handleBackgroundChange = (newType: BackgroundType) => {
     setBackgroundType(newType);
-    if (newType === "livingroom") {
-      setRenderMode("splat");
-      // Set camera to verified Livingroom viewing position
-      setSceneSettings({
-        cameraX: 0.45,
-        cameraY: 0.26,
-        cameraZ: 0.79,
-        rotationX: 0,
-        rotationY: 0,
-        targetX: 0.75,
-        targetY: 0.44,
-        targetZ: 0.11,
-      });
-    } else if (newType === "3d-scene") {
-      // Reset to default camera position for 3D scene
-      setSceneSettings({
-        cameraX: 0,
-        cameraY: 0,
-        cameraZ: 15,
-        rotationX: 0,
-        rotationY: 0,
-        targetX: 0,
-        targetY: 0,
-        targetZ: 0,
-      });
-    }
   };
 
   const handleListeningChange = (listening: boolean, data?: SpeechStatus) => {
@@ -140,27 +104,9 @@ export default function SpatialTextInput({
         headX={headX}
         headY={headY}
         headZ={headZ}
-        smoothingEnabled={smoothingEnabled}
-        parallaxIntensity={parallaxIntensity}
-        renderMode={renderMode}
-        onCameraUpdate={(cam, target) => {
-          setLiveCamera(cam);
-          setLiveTarget(target);
-        }}
       />
       <HandTrackingManager />
       <FaceTrackingManager onHeadMove={handleHeadMove} />
-
-      <ParallaxSettings
-        smoothingEnabled={smoothingEnabled}
-        setSmoothingEnabled={setSmoothingEnabled}
-        intensity={parallaxIntensity}
-        setIntensity={setParallaxIntensity}
-        renderMode={renderMode}
-        setRenderMode={setRenderMode}
-        liveCamera={liveCamera}
-        liveTarget={liveTarget}
-      />
 
       <motion.div
         className="w-full max-w-4xl z-10 origin-center"
