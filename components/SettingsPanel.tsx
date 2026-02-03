@@ -16,6 +16,8 @@ interface SettingsPanelProps {
 
     faceTrackingEnabled: boolean;
     setFaceTrackingEnabled: (v: boolean) => void;
+    headTrackingSmoothing: boolean;
+    setHeadTrackingSmoothing: (v: boolean) => void;
     showFaceDebug: boolean;
     setShowFaceDebug: (v: boolean) => void;
 
@@ -44,6 +46,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setShowHandCamera,
     faceTrackingEnabled,
     setFaceTrackingEnabled,
+    headTrackingSmoothing,
+    setHeadTrackingSmoothing,
     showFaceDebug,
     setShowFaceDebug,
     onCopyParams,
@@ -189,6 +193,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                         className="space-y-5"
                                     >
                                         <ControlRow label="Enable Tracking" value={faceTrackingEnabled} onChange={setFaceTrackingEnabled} />
+                                        <ControlRow label="Smoothing" value={headTrackingSmoothing} onChange={setHeadTrackingSmoothing} />
+                                        <p className="text-xs text-white/40 font-light -mt-3 mb-2">
+                                            Reduces jitter but may add slight latency.
+                                        </p>
+                                        <div className="h-px bg-white/10 w-full" />
                                         <ControlRow label="Show Debug View" value={showFaceDebug} onChange={setShowFaceDebug} />
                                         <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                                             <p className="text-xs text-white/60 leading-relaxed">Face tracking enables the parallax effect.</p>

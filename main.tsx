@@ -39,6 +39,7 @@ export default function SpatialTextInput({
 
   // --- Face Tracking State ---
   const [faceTrackingEnabled, setFaceTrackingEnabled] = useState(true);
+  const [headTrackingSmoothing, setHeadTrackingSmoothing] = useState(true);
   const [showFaceDebug, setShowFaceDebug] = useState(false);
 
   // --- Dev State ---
@@ -53,8 +54,8 @@ export default function SpatialTextInput({
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
 
-  const activeHeadX = smoothX;
-  const activeHeadY = smoothY;
+  const activeHeadX = headTrackingSmoothing ? smoothX : headX;
+  const activeHeadY = headTrackingSmoothing ? smoothY : headY;
 
   const uiRotateX = useTransform(activeHeadY, (y) => y * 5); // Max 5deg tilt
   const uiRotateY = useTransform(activeHeadX, (x) => x * -5); // Max 5deg tilt
@@ -147,6 +148,7 @@ Head Z: ${headZ.toFixed(3)}`;
         headX={headX}
         headY={headY}
         headZ={headZ}
+        smoothingEnabled={headTrackingSmoothing}
         onCameraUpdate={handleCameraUpdate}
       />
       <HandTrackingManager
@@ -211,6 +213,8 @@ Head Z: ${headZ.toFixed(3)}`;
         setShowHandCamera={setShowHandCamera}
         faceTrackingEnabled={faceTrackingEnabled}
         setFaceTrackingEnabled={setFaceTrackingEnabled}
+        headTrackingSmoothing={headTrackingSmoothing}
+        setHeadTrackingSmoothing={setHeadTrackingSmoothing}
         showFaceDebug={showFaceDebug}
         setShowFaceDebug={setShowFaceDebug}
         onCopyParams={handleCopyParams}
