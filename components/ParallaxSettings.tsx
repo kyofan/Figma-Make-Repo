@@ -25,6 +25,26 @@ interface ParallaxSettingsProps {
       rotationY: number;
     }>
   >;
+  modelSettings?: {
+    scale: number;
+    positionX: number;
+    positionY: number;
+    positionZ: number;
+    rotationX: number;
+    rotationY: number;
+    rotationZ: number;
+  };
+  setModelSettings?: React.Dispatch<
+    React.SetStateAction<{
+      scale: number;
+      positionX: number;
+      positionY: number;
+      positionZ: number;
+      rotationX: number;
+      rotationY: number;
+      rotationZ: number;
+    }>
+  >;
 }
 
 export const ParallaxSettings: React.FC<ParallaxSettingsProps> = ({
@@ -36,6 +56,8 @@ export const ParallaxSettings: React.FC<ParallaxSettingsProps> = ({
   setRenderMode,
   sceneSettings,
   setSceneSettings,
+  modelSettings,
+  setModelSettings,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -202,6 +224,93 @@ export const ParallaxSettings: React.FC<ParallaxSettingsProps> = ({
                           setSceneSettings((prev) => ({
                             ...prev,
                             cameraZ: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {modelSettings && setModelSettings && renderMode === "splat" && (
+                <>
+                  <div className="h-px bg-white/10" />
+                  <div className="space-y-3">
+                    <span className="text-sm font-light flex items-center gap-2">
+                      <Cuboid size={14} /> Model Transform
+                    </span>
+
+                    {/* Scale */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[10px] font-light text-white/60">
+                        <span>Scale</span>
+                        <span>{modelSettings.scale.toFixed(2)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="5"
+                        step="0.1"
+                        value={modelSettings.scale}
+                        onChange={(e) =>
+                          setModelSettings((prev) => ({
+                            ...prev,
+                            scale: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                      />
+                    </div>
+
+                    {/* Rotation X */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[10px] font-light text-white/60">
+                        <span>Rot X (deg)</span>
+                        <span>
+                          {((modelSettings.rotationX * 180) / Math.PI).toFixed(
+                            0,
+                          )}
+                          °
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-Math.PI}
+                        max={Math.PI}
+                        step="0.1"
+                        value={modelSettings.rotationX}
+                        onChange={(e) =>
+                          setModelSettings((prev) => ({
+                            ...prev,
+                            rotationX: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                      />
+                    </div>
+
+                    {/* Rotation Y */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[10px] font-light text-white/60">
+                        <span>Rot Y (deg)</span>
+                        <span>
+                          {((modelSettings.rotationY * 180) / Math.PI).toFixed(
+                            0,
+                          )}
+                          °
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-Math.PI}
+                        max={Math.PI}
+                        step="0.1"
+                        value={modelSettings.rotationY}
+                        onChange={(e) =>
+                          setModelSettings((prev) => ({
+                            ...prev,
+                            rotationY: Number(e.target.value),
                           }))
                         }
                         className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"

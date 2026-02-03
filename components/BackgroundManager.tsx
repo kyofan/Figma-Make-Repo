@@ -19,6 +19,7 @@ interface BackgroundManagerProps {
   parallaxIntensity?: number;
   renderMode?: "gltf" | "splat";
   sceneSettings?: any;
+  modelSettings?: any;
 }
 
 export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
@@ -30,6 +31,7 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   parallaxIntensity = 50,
   renderMode = "gltf",
   sceneSettings,
+  modelSettings,
 }) => {
   console.log("BackgroundManager rendering type:", type);
   // Smooth the raw input
@@ -122,6 +124,7 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
           smoothingEnabled={smoothingEnabled}
           renderMode={renderMode}
           sceneSettings={sceneSettings}
+          modelSettings={modelSettings}
         />
       </div>
     );
@@ -139,6 +142,7 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
           renderMode="splat"
           modelUrl="media/Livingroom-in-Taipei.ply"
           sceneSettings={sceneSettings}
+          modelSettings={modelSettings}
         />
       </div>
     );

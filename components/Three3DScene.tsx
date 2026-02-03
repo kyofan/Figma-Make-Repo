@@ -28,6 +28,15 @@ interface Three3DSceneProps {
     rotationX: number;
     rotationY: number;
   };
+  modelSettings?: {
+    scale: number;
+    positionX: number;
+    positionY: number;
+    positionZ: number;
+    rotationX: number;
+    rotationY: number;
+    rotationZ: number;
+  };
 }
 
 // Camera Controller Component
@@ -56,8 +65,9 @@ const CameraController = ({
     const baseZ = sceneSettings?.cameraZ ?? 5;
 
     // Parallax Sensitivity
-    const moveRange = 2.0;
-    const depthRange = 3.0; // How much Z movement affects camera Z
+    // Increased range based on user feedback (not responding)
+    const moveRange = 3.0;
+    const depthRange = 4.0; // How much Z movement affects camera Z
 
     // Calculate Target Positions
     const targetX = baseX + x * moveRange;
@@ -72,14 +82,7 @@ const CameraController = ({
     camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.1);
     camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.1);
 
-    // Look at center + rotation offset logic could go here
-    // For now, look at center (0,0,0) is standard for parallax
-    // To implement manual rotation, we could look at a shifted target
-    // target = (0,0,0) + rotationOffset
     camera.lookAt(0, 0, 0);
-
-    // Apply manual rotation offsets on top of lookAt if desired
-    // (Note: lookAt overwrites quaternion, so we'd need to rotate a parent or offset lookAt target)
   });
 
   return null;
@@ -147,10 +150,12 @@ export const Three3DScene: React.FC<Three3DSceneProps> = ({
   renderMode = "gltf",
   modelUrl,
   sceneSettings,
+  modelSettings,
 }) => {
   return (
     <div className="w-full h-full">
-      <Canvas>
+      {/* Optimized Canvas settings for better performance on high-res displays */}
+      <Canvas dpr={[1, 1.5]} gl={{ antialias: false, alpha: false }}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
         <CameraController
           headX={headX}
@@ -174,6 +179,17 @@ export const Three3DScene: React.FC<Three3DSceneProps> = ({
             // User can replace with "/models/room.splat"
             <Splat
               src={modelUrl || "https://antimatter15.com/splat/nike.splat"}
+              scale={modelSettings?.scale ?? 1}
+              position={[
+                modelSettings?.positionX ?? 0,
+                modelSettings?.positionY ?? 0,
+                modelSettings?.positionZ ?? 0,
+              ]}
+              rotation={[
+                modelSettings?.rotationX ?? 0,
+                modelSettings?.rotationY ?? 0,
+                modelSettings?.rotationZ ?? 0,
+              ]}
             />
           )}
 

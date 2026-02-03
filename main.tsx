@@ -49,6 +49,17 @@ export default function SpatialTextInput({
     rotationY: 0,
   });
 
+  // Model Transform Settings (Manual Override for Splats)
+  const [modelSettings, setModelSettings] = useState({
+    scale: 1,
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+  });
+
   // UI Depth / Parallax Transforms
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
@@ -71,6 +82,20 @@ export default function SpatialTextInput({
     },
     [headX, headY, headZ],
   );
+
+  const handleBackgroundChange = (newType: BackgroundType) => {
+    setBackgroundType(newType);
+    if (newType === "livingroom") {
+      setRenderMode("splat");
+    } else if (newType === "3d-scene") {
+      // Keep current render mode or default to gltf?
+      // Maybe default to gltf if it was splat and user switched from livingroom?
+      // For now, let's leave it as is, or reset to gltf if coming from livingroom?
+      // Actually, if we switch to "Classic" (original) and then back to "3D Scene",
+      // we might want it to remember.
+      // But specifically for Livingroom, we force Splat.
+    }
+  };
 
   const handleListeningChange = (listening: boolean, data?: SpeechStatus) => {
     setIsListening(listening);
@@ -120,6 +145,7 @@ export default function SpatialTextInput({
         parallaxIntensity={parallaxIntensity}
         renderMode={renderMode}
         sceneSettings={sceneSettings}
+        modelSettings={modelSettings}
       />
       <HandTrackingManager />
       <FaceTrackingManager onHeadMove={handleHeadMove} />
@@ -133,6 +159,8 @@ export default function SpatialTextInput({
         setRenderMode={setRenderMode}
         sceneSettings={sceneSettings}
         setSceneSettings={setSceneSettings}
+        modelSettings={modelSettings}
+        setModelSettings={setModelSettings}
       />
 
       <motion.div
@@ -187,7 +215,7 @@ export default function SpatialTextInput({
         >
           <BackgroundToggle
             currentType={backgroundType}
-            onTypeChange={setBackgroundType}
+            onTypeChange={handleBackgroundChange}
           />
         </motion.div>
       </div>
