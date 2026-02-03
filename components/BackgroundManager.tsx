@@ -1,6 +1,7 @@
 import React from "react";
 import { motion, MotionValue, useTransform, useSpring } from "motion/react";
 import { Three3DScene } from "./Three3DScene";
+import { StandaloneSplatViewer } from "./StandaloneSplatViewer";
 
 export type BackgroundType =
   | "original"
@@ -18,8 +19,7 @@ interface BackgroundManagerProps {
   smoothingEnabled?: boolean;
   parallaxIntensity?: number;
   renderMode?: "gltf" | "splat";
-  sceneSettings?: any;
-  modelSettings?: any;
+  onCameraUpdate?: (cam: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }) => void;
 }
 
 export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
@@ -27,11 +27,10 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   headX,
   headY,
   headZ,
-  smoothingEnabled = true,
+  smoothingEnabled = false, // Default to OFF per user request
   parallaxIntensity = 50,
   renderMode = "gltf",
-  sceneSettings,
-  modelSettings,
+  onCameraUpdate,
 }) => {
   console.log("BackgroundManager rendering type:", type);
   // Smooth the raw input
@@ -93,17 +92,17 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
     return (
       <div className="absolute inset-0 z-0 overflow-hidden bg-black">
         <motion.div
-            className="absolute inset-[-5%] w-[110%] h-[110%]"
-            style={{
-                x: parallaxX,
-                y: parallaxY
-            }}
+          className="absolute inset-[-5%] w-[110%] h-[110%]"
+          style={{
+            x: parallaxX,
+            y: parallaxY
+          }}
         >
-             <img
-                src="media/bg.webp"
-                alt="Background"
-                className="w-full h-full object-cover opacity-80"
-            />
+          <img
+            src="media/bg.webp"
+            alt="Background"
+            className="w-full h-full object-cover opacity-80"
+          />
         </motion.div>
 
         {/* Vignette / Glass Reflection effect */}
@@ -130,19 +129,17 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
     );
   }
 
-  // Livingroom Mode
+  // Livingroom Mode - Uses standalone viewer (working Safe Mode approach)
   if (type === "livingroom") {
     return (
       <div className="absolute inset-0 z-0 bg-black">
-        <Three3DScene
+        <StandaloneSplatViewer
+          url="Livingroom-in-Taipei.ply"
+          className="w-full h-full"
           headX={effectiveX}
           headY={effectiveY}
-          headZ={headZ}
           smoothingEnabled={smoothingEnabled}
-          renderMode="splat"
-          modelUrl="media/Livingroom-in-Taipei.ply"
-          sceneSettings={sceneSettings}
-          modelSettings={modelSettings}
+          onCameraUpdate={onCameraUpdate}
         />
       </div>
     );

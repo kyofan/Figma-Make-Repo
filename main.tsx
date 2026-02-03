@@ -31,35 +31,18 @@ export default function SpatialTextInput({
     useState<BackgroundType>("original");
 
   // Parallax Settings (A/B Testing)
-  const [smoothingEnabled, setSmoothingEnabled] = useState(true);
+  const [smoothingEnabled, setSmoothingEnabled] = useState(false); // Default OFF
   const [parallaxIntensity, setParallaxIntensity] = useState(50);
   const [renderMode, setRenderMode] = useState<"gltf" | "splat">("gltf");
+
+  // Live camera state from viewer (for display/debugging)
+  const [liveCamera, setLiveCamera] = useState({ x: 0, y: 0, z: 0 });
+  const [liveTarget, setLiveTarget] = useState({ x: 0, y: 0, z: 0 });
 
   // Head Tracking State (MotionValues for performance)
   const headX = useMotionValue(0);
   const headY = useMotionValue(0);
   const headZ = useMotionValue(0);
-
-  // Scene Viewport Settings (Manual Override)
-  const [sceneSettings, setSceneSettings] = useState({
-    cameraX: 0,
-    cameraY: 0,
-    cameraZ: 5,
-    rotationX: 0,
-    rotationY: 0,
-  });
-
-  // Model Transform Settings (Manual Override for Splats)
-  const [modelSettings, setModelSettings] = useState({
-    scale: 1,
-    positionX: 0,
-    positionY: 0,
-    positionZ: 0,
-    rotationX: 0,
-    rotationY: 0,
-    rotationZ: 0,
-  });
-
   // UI Depth / Parallax Transforms
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
@@ -87,13 +70,29 @@ export default function SpatialTextInput({
     setBackgroundType(newType);
     if (newType === "livingroom") {
       setRenderMode("splat");
+      // Set camera to verified Livingroom viewing position
+      setSceneSettings({
+        cameraX: 0.45,
+        cameraY: 0.26,
+        cameraZ: 0.79,
+        rotationX: 0,
+        rotationY: 0,
+        targetX: 0.75,
+        targetY: 0.44,
+        targetZ: 0.11,
+      });
     } else if (newType === "3d-scene") {
-      // Keep current render mode or default to gltf?
-      // Maybe default to gltf if it was splat and user switched from livingroom?
-      // For now, let's leave it as is, or reset to gltf if coming from livingroom?
-      // Actually, if we switch to "Classic" (original) and then back to "3D Scene",
-      // we might want it to remember.
-      // But specifically for Livingroom, we force Splat.
+      // Reset to default camera position for 3D scene
+      setSceneSettings({
+        cameraX: 0,
+        cameraY: 0,
+        cameraZ: 15,
+        rotationX: 0,
+        rotationY: 0,
+        targetX: 0,
+        targetY: 0,
+        targetZ: 0,
+      });
     }
   };
 
@@ -144,8 +143,10 @@ export default function SpatialTextInput({
         smoothingEnabled={smoothingEnabled}
         parallaxIntensity={parallaxIntensity}
         renderMode={renderMode}
-        sceneSettings={sceneSettings}
-        modelSettings={modelSettings}
+        onCameraUpdate={(cam, target) => {
+          setLiveCamera(cam);
+          setLiveTarget(target);
+        }}
       />
       <HandTrackingManager />
       <FaceTrackingManager onHeadMove={handleHeadMove} />
@@ -157,10 +158,8 @@ export default function SpatialTextInput({
         setIntensity={setParallaxIntensity}
         renderMode={renderMode}
         setRenderMode={setRenderMode}
-        sceneSettings={sceneSettings}
-        setSceneSettings={setSceneSettings}
-        modelSettings={modelSettings}
-        setModelSettings={setModelSettings}
+        liveCamera={liveCamera}
+        liveTarget={liveTarget}
       />
 
       <motion.div

@@ -2,13 +2,13 @@ import React, { Suspense, useRef, useEffect, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   useGLTF,
-  Splat,
   Environment,
   PerspectiveCamera,
   Grid,
   Box,
   Torus,
   Float,
+  OrbitControls,
 } from "@react-three/drei";
 import { MotionValue } from "motion/react";
 import * as THREE from "three";
@@ -27,6 +27,9 @@ interface Three3DSceneProps {
     cameraZ: number;
     rotationX: number;
     rotationY: number;
+    targetX: number;
+    targetY: number;
+    targetZ: number;
   };
   modelSettings?: {
     scale: number;
@@ -39,21 +42,40 @@ interface Three3DSceneProps {
   };
 }
 
-// Camera Controller Component
+// Camera Controller Component (Optional - works with OrbitControls)
 const CameraController = ({
   headX,
   headY,
   headZ,
   sceneSettings,
+  enableHeadTracking,
 }: {
   headX: MotionValue<number>;
   headY: MotionValue<number>;
   headZ?: MotionValue<number>;
   sceneSettings?: Three3DSceneProps["sceneSettings"];
+  enableHeadTracking?: boolean;
 }) => {
   const { camera } = useThree();
 
+  // Apply sceneSettings to camera when they change
+  useEffect(() => {
+    if (sceneSettings && !enableHeadTracking) {
+      // Directly set camera position when not using head tracking
+      camera.position.set(
+        sceneSettings.cameraX ?? 0,
+        sceneSettings.cameraY ?? 0,
+        sceneSettings.cameraZ ?? 5
+      );
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
+  }, [sceneSettings, enableHeadTracking, camera]);
+
   useFrame(() => {
+    // Only apply head tracking if enabled (disabled when using manual controls)
+    if (!enableHeadTracking) return;
+
     // Read current motion values
     const x = headX.get();
     const y = headY.get();
@@ -65,16 +87,12 @@ const CameraController = ({
     const baseZ = sceneSettings?.cameraZ ?? 5;
 
     // Parallax Sensitivity
-    // Increased range based on user feedback (not responding)
     const moveRange = 3.0;
-    const depthRange = 4.0; // How much Z movement affects camera Z
+    const depthRange = 4.0;
 
     // Calculate Target Positions
     const targetX = baseX + x * moveRange;
     const targetY = baseY + y * moveRange;
-    // For Z: If user moves head forward (negative Z in some conventions, or positive depending on mapping), camera moves forward (negative Z).
-    // Assuming 'z' input is roughly -1 (far) to 1 (close).
-    // If z is 1 (close), we want camera closer (smaller Z value).
     const targetZ = baseZ - z * depthRange;
 
     // Smooth interpolation
@@ -110,9 +128,9 @@ const DefaultScene = () => {
           <meshStandardMaterial color="cyan" />
         </Torus>
       </Float>
-       <Float speed={1.5} rotationIntensity={0.5} floatIntensity={2}>
-        <Box position={[0, 1, -3]} args={[0.5, 3, 0.5]} rotation={[0,0,0.5]}>
-           <meshStandardMaterial color="orange" emissive="orange" emissiveIntensity={0.5} />
+      <Float speed={1.5} rotationIntensity={0.5} floatIntensity={2}>
+        <Box position={[0, 1, -3]} args={[0.5, 3, 0.5]} rotation={[0, 0, 0.5]}>
+          <meshStandardMaterial color="orange" emissive="orange" emissiveIntensity={0.5} />
         </Box>
       </Float>
 
@@ -152,16 +170,99 @@ export const Three3DScene: React.FC<Three3DSceneProps> = ({
   sceneSettings,
   modelSettings,
 }) => {
+  const [enableHeadTracking, setEnableHeadTracking] = useState(false);
+  const [orbitControlsRef, setOrbitControlsRef] = useState<any>(null);
+
+  // Update OrbitControls target when sceneSettings change
+  useEffect(() => {
+    if (orbitControlsRef && sceneSettings) {
+      const targetX = sceneSettings.targetX ?? 0;
+      const targetY = sceneSettings.targetY ?? 0;
+      const targetZ = sceneSettings.targetZ ?? 0;
+      orbitControlsRef.target.set(targetX, targetY, targetZ);
+      orbitControlsRef.update();
+    }
+  }, [orbitControlsRef, sceneSettings?.targetX, sceneSettings?.targetY, sceneSettings?.targetZ]);
+
+  const handleResetCamera = () => {
+    if (orbitControlsRef) {
+      // Reset camera to user-found coordinates
+      // CAM: [0.45, 0.26, 0.79]
+      const defaultX = renderMode === "splat" && modelUrl?.includes("Livingroom") ? 0.45 : (sceneSettings?.cameraX ?? 0);
+      const defaultY = renderMode === "splat" && modelUrl?.includes("Livingroom") ? 0.26 : (sceneSettings?.cameraY ?? 0);
+      const defaultZ = renderMode === "splat" && modelUrl?.includes("Livingroom") ? 0.79 : (sceneSettings?.cameraZ ?? 10);
+
+      // Target: [0.75, 0.44, 0.11]
+      const targetX = renderMode === "splat" && modelUrl?.includes("Livingroom") ? 0.75 : (sceneSettings?.targetX ?? 0);
+      const targetY = renderMode === "splat" && modelUrl?.includes("Livingroom") ? 0.44 : (sceneSettings?.targetY ?? 0);
+      const targetZ = renderMode === "splat" && modelUrl?.includes("Livingroom") ? 0.11 : (sceneSettings?.targetZ ?? 0);
+
+      orbitControlsRef.object.position.set(defaultX, defaultY, defaultZ);
+      orbitControlsRef.target.set(targetX, targetY, targetZ);
+      orbitControlsRef.update();
+    }
+  };
+
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
+      {/* Camera Controls Overlay */}
+      <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+        <button
+          onClick={handleResetCamera}
+          className="px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg text-white text-xs font-medium transition-all border border-white/20"
+        >
+          Reset Camera
+        </button>
+        <button
+          onClick={() => setEnableHeadTracking(!enableHeadTracking)}
+          className={`px-3 py-2 backdrop-blur-md rounded-lg text-white text-xs font-medium transition-all border ${enableHeadTracking
+            ? "bg-blue-500/30 border-blue-400/50"
+            : "bg-white/10 hover:bg-white/20 border-white/20"
+            }`}
+        >
+          {enableHeadTracking ? "Head Tracking ON" : "Head Tracking OFF"}
+        </button>
+      </div>
+
       {/* Optimized Canvas settings for better performance on high-res displays */}
       <Canvas dpr={[1, 1.5]} gl={{ antialias: false, alpha: false }}>
-        <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
+        <PerspectiveCamera
+          makeDefault
+          position={
+            renderMode === "splat" && modelUrl?.includes("Livingroom")
+              ? [0.45, 0.26, 0.79]  // User-verified coordinates
+              : [0, 0, 10]
+          }
+          fov={50}
+          near={0.01}
+          far={100000}
+        />
+
+        {/* OrbitControls for free camera movement */}
+        <OrbitControls
+          ref={setOrbitControlsRef}
+          enableDamping
+          dampingFactor={0.05}
+          minDistance={0.01}
+          maxDistance={100000}
+          zoomSpeed={2}
+          enabled={!enableHeadTracking}
+          makeDefault
+          onChange={() => {
+            if (orbitControlsRef) {
+              const p = orbitControlsRef.object.position;
+              const t = orbitControlsRef.target;
+              console.log(`Camera: pos(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}) target(${t.x.toFixed(2)}, ${t.y.toFixed(2)}, ${t.z.toFixed(2)})`);
+            }
+          }}
+        />
+
         <CameraController
           headX={headX}
           headY={headY}
           headZ={headZ}
           sceneSettings={sceneSettings}
+          enableHeadTracking={enableHeadTracking}
         />
 
         <Suspense fallback={null}>
@@ -175,31 +276,18 @@ export const Three3DScene: React.FC<Three3DSceneProps> = ({
             // To use real GLTF: <ModelLoader url="/models/scene.glb" />
           )}
 
-          {renderMode === "splat" && (
-            // User can replace with "/models/room.splat"
-            <Splat
-              src={modelUrl || "https://antimatter15.com/splat/nike.splat"}
-              scale={modelSettings?.scale ?? 1}
-              position={[
-                modelSettings?.positionX ?? 0,
-                modelSettings?.positionY ?? 0,
-                modelSettings?.positionZ ?? 0,
-              ]}
-              rotation={[
-                modelSettings?.rotationX ?? 0,
-                modelSettings?.rotationY ?? 0,
-                modelSettings?.rotationZ ?? 0,
-              ]}
-            />
-          )}
+
 
           <Environment preset="city" />
         </Suspense>
       </Canvas>
 
       {/* Instructions Overlay */}
-      <div className="absolute bottom-12 right-4 text-xs text-white/30 text-right pointer-events-none">
-        {renderMode === "gltf" ? "3D GLTF Mode" : "Gaussian Splat Mode"}
+      <div className="absolute bottom-12 right-4 text-xs text-white/30 text-right pointer-events-none flex flex-col items-end gap-1">
+        <div>{renderMode === "gltf" ? "3D GLTF Mode" : "Gaussian Splat Mode"}</div>
+        <div className="text-white/20">
+          {enableHeadTracking ? "Using head tracking" : "Left click + drag to rotate • Right click + drag to pan • Scroll to zoom"}
+        </div>
       </div>
     </div>
   );
