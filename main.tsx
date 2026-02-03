@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { defineProperties } from "figma:react";
-import { motion } from "motion/react";
+import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { TextEditor } from "./components/TextEditor";
 import { GazeIndicator } from "./components/GazeIndicator";
 import { VoiceVisualizer, SpeechStatus } from "./components/VoiceVisualizer";
@@ -12,6 +12,7 @@ import {
 } from "./components/BackgroundManager";
 import { BackgroundToggle } from "./components/BackgroundToggle";
 import { HandTrackingManager } from "./components/HandTrackingManager";
+import { FaceTrackingManager } from "./components/FaceTrackingManager";
 
 export default function SpatialTextInput({
   showGazeIndicator = true,
@@ -27,6 +28,37 @@ export default function SpatialTextInput({
   >("unknown");
   const [backgroundType, setBackgroundType] =
     useState<BackgroundType>("original");
+
+  // Head Tracking State (MotionValues for performance)
+  const headX = useMotionValue(0);
+  const headY = useMotionValue(0);
+  const headZ = useMotionValue(0);
+  // UI Depth / Parallax Transforms (for 2D elements)
+  const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
+  const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
+
+  const activeHeadX = smoothX;
+  const activeHeadY = smoothY;
+
+  const uiRotateX = useTransform(activeHeadY, (y) => y * 5); // Max 5deg tilt
+  const uiRotateY = useTransform(activeHeadX, (x) => x * -5); // Max 5deg tilt
+  const uiX = useTransform(activeHeadX, (x) => x * -15); // Horizontal parallax
+  const uiY = useTransform(activeHeadY, (y) => y * -15); // Vertical parallax
+
+  const handleHeadMove = useCallback(
+    (pos: { x: number; y: number; z: number }) => {
+      headX.set(pos.x);
+      headY.set(pos.y);
+      // z is usually distance. We might need to scale it or just pass it raw.
+      // FaceTrackingManager returns rawZ.
+      headZ.set(pos.z);
+    },
+    [headX, headY, headZ],
+  );
+
+  const handleBackgroundChange = (newType: BackgroundType) => {
+    setBackgroundType(newType);
+  };
 
   const handleListeningChange = (listening: boolean, data?: SpeechStatus) => {
     setIsListening(listening);
@@ -66,14 +98,26 @@ export default function SpatialTextInput({
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      <BackgroundManager type={backgroundType} />
+    <div className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden perspective-[1200px]">
+      <BackgroundManager
+        type={backgroundType}
+        headX={headX}
+        headY={headY}
+        headZ={headZ}
+      />
       <HandTrackingManager />
+      <FaceTrackingManager onHeadMove={handleHeadMove} />
 
       <motion.div
-        className="w-full max-w-4xl z-10"
+        className="w-full max-w-4xl z-10 origin-center"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        style={{
+          rotateX: uiRotateX,
+          rotateY: uiRotateY,
+          x: uiX,
+          y: uiY,
+        }}
         transition={{ duration: 0.5 }}
       >
         <header className="text-center mb-4">
@@ -116,7 +160,7 @@ export default function SpatialTextInput({
         >
           <BackgroundToggle
             currentType={backgroundType}
-            onTypeChange={setBackgroundType}
+            onTypeChange={handleBackgroundChange}
           />
         </motion.div>
       </div>

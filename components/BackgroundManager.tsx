@@ -1,15 +1,47 @@
 import React from "react";
-import { motion } from "motion/react";
+import { motion, MotionValue, useTransform, useSpring } from "motion/react";
+import { StandaloneSplatViewer } from "./StandaloneSplatViewer";
 
-export type BackgroundType = "original" | "bg" | "bg1";
+export type BackgroundType =
+  | "original"
+  | "bg"
+  | "bg1"
+  | "mixed-reality";
 
 interface BackgroundManagerProps {
   type: BackgroundType;
+  headX: MotionValue<number>;
+  headY: MotionValue<number>;
+  headZ?: MotionValue<number>;
+  smoothingEnabled?: boolean;
+  parallaxIntensity?: number;
+  renderMode?: "gltf" | "splat";
+  onCameraUpdate?: (cam: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }) => void;
 }
 
 export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   type,
+  headX,
+  headY,
+  headZ,
+  smoothingEnabled = false, // Default to OFF per user request
+  parallaxIntensity = 50,
+  renderMode = "gltf",
+  onCameraUpdate,
 }) => {
+  console.log("BackgroundManager rendering type:", type);
+  // Smooth the raw input
+  const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
+  const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
+
+  // Use smoothed or raw based on setting
+  const effectiveX = smoothingEnabled ? smoothX : headX;
+  const effectiveY = smoothingEnabled ? smoothY : headY;
+
+  // Transform to pixel offset
+  const parallaxX = useTransform(effectiveX, (value) => value * parallaxIntensity);
+  const parallaxY = useTransform(effectiveY, (value) => value * -parallaxIntensity);
+
   if (type === "original") {
     return (
       <>
@@ -49,6 +81,23 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
           ))}
         </div>
       </>
+    );
+  }
+
+  // Mixed Reality Mode (formerly Livingroom) - Uses standalone viewer
+  if (type === "mixed-reality") {
+    return (
+      <div className="absolute inset-0 z-0 bg-black">
+        <StandaloneSplatViewer
+          url="Livingroom-in-Taipei.ply"
+          className="w-full h-full"
+          headX={effectiveX}
+          headY={effectiveY}
+          headZ={headZ}
+          smoothingEnabled={smoothingEnabled}
+          onCameraUpdate={onCameraUpdate}
+        />
+      </div>
     );
   }
 
