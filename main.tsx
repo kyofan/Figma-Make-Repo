@@ -137,7 +137,7 @@ export default function SpatialTextInput({
         animate={{ opacity: 0.7 }}
         transition={{ delay: 1 }}
       >
-        v2.0.0
+        v2.6.0
       </motion.div>
     </div>
   );
