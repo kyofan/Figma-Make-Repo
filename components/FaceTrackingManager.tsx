@@ -5,16 +5,20 @@ import {
     DrawingUtils
 } from "@mediapipe/tasks-vision";
 import { motion, AnimatePresence } from "motion/react";
-import { Eye, EyeOff, User, ScanFace } from "lucide-react";
 
 interface FaceTrackingManagerProps {
     onHeadMove?: (position: { x: number; y: number; z: number }) => void;
     onEyeGaze?: (gaze: { x: number; y: number }) => void;
+    // Settings Props supplied from parent
+    isTracking: boolean;
+    showDebugView: boolean;
 }
 
 export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
     onHeadMove,
-    onEyeGaze
+    onEyeGaze,
+    isTracking,
+    showDebugView
 }) => {
     // Tracking refs (hidden)
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -28,9 +32,6 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
     const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [cameraError, setCameraError] = useState<string | null>(null);
-    const [showCamera, setShowCamera] = useState(false); // Hidden by default
-    const [isTracking, setIsTracking] = useState(true);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Initialize FaceLandmarker
     useEffect(() => {
@@ -114,7 +115,7 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
 
     // Sync stream to debug video
     useEffect(() => {
-        if (showCamera && isCameraActive && videoRef.current && debugVideoRef.current) {
+        if (showDebugView && isCameraActive && videoRef.current && debugVideoRef.current) {
             // Check if stream is already assigned to avoid flickering
             if (debugVideoRef.current.srcObject !== videoRef.current.srcObject) {
                 debugVideoRef.current.srcObject = videoRef.current.srcObject;
@@ -123,7 +124,7 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
                 };
             }
         }
-    }, [showCamera, isCameraActive]);
+    }, [showDebugView, isCameraActive]);
 
     const predict = useCallback(() => {
         if (!faceLandmarker || !videoRef.current) return;
@@ -149,10 +150,7 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
 
             const rawX = noseTip.x;
             const rawY = noseTip.y;
-            const rawZ = noseTip.z;
-
             // Face width for depth estimation (cheek to cheek: landmarks 234 and 454)
-            // Closer = larger faceWidth, Further = smaller faceWidth
             const leftCheek = landmarks[234];
             const rightCheek = landmarks[454];
             const faceWidth = Math.abs(rightCheek.x - leftCheek.x);
@@ -160,7 +158,6 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
             const x = (rawX - 0.5) * 2; // -1 to 1
             const y = (rawY - 0.5) * 2; // -1 to 1
             // Use face width as depth proxy: normalize around typical 0.25 face width
-            // Larger faceWidth = closer = positive Z offset
             const zFromFaceWidth = (faceWidth - 0.25) * 4.0; // ~-1 to 1 range
 
             if (onHeadMove) {
@@ -186,7 +183,7 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
         }
 
         // 2. Debug Drawing
-        if (showCamera && debugCanvasRef.current && debugVideoRef.current) {
+        if (showDebugView && debugCanvasRef.current && debugVideoRef.current) {
             const canvasCtx = debugCanvasRef.current.getContext("2d");
             if (canvasCtx) {
                 // Match dimensions
@@ -219,7 +216,7 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
         }
 
         requestRef.current = requestAnimationFrame(predict);
-    }, [faceLandmarker, isTracking, showCamera, onHeadMove, onEyeGaze]);
+    }, [faceLandmarker, isTracking, showDebugView, onHeadMove, onEyeGaze]);
 
     useEffect(() => {
         requestRef.current = requestAnimationFrame(predict);
@@ -231,98 +228,43 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
     }, [predict]);
 
     return (
-        <motion.div
-            className="fixed bottom-20 right-4 z-[100] flex flex-col items-end gap-2 pointer-events-auto"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-        >
-            {/* Toggle Button for Face Settings */}
-            <button
-                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-lg hover:bg-white/20 transition-all"
-                title="Face Tracking Settings"
-            >
-                <ScanFace size={20} />
-            </button>
-
+        <div className="pointer-events-none">
+            {/* Debug Video Feed (Visible if enabled) */}
             <AnimatePresence>
-                {isSettingsOpen && (
+                {showDebugView && (
                     <motion.div
-                        className="mb-2 p-4 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 text-white w-64 shadow-2xl"
-                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                        className="fixed bottom-36 right-4 z-[90] rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm pointer-events-auto"
+                        initial={{ opacity: 0, height: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, height: "auto", scale: 1 }}
+                        exit={{ opacity: 0, height: 0, scale: 0.8 }}
                     >
-                        <h3 className="text-sm font-semibold mb-4 text-white/80 uppercase tracking-wider">Face Tracking</h3>
-
-                        {/* Toggle Tracking */}
-                        <div className="flex items-center justify-between mb-4">
-                            <span className="text-sm font-light flex items-center gap-2">
-                                <User size={14} /> Tracking
-                            </span>
-                            <button
-                                onClick={() => setIsTracking(!isTracking)}
-                                className={`w-10 h-6 rounded-full p-1 transition-colors ${isTracking ? "bg-blue-500" : "bg-white/20"}`}
-                            >
-                                <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isTracking ? "translate-x-4" : ""}`} />
-                            </button>
+                        <div className="relative w-64 h-48">
+                            <video
+                                ref={debugVideoRef}
+                                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                                autoPlay
+                                playsInline
+                                muted
+                            />
+                            <canvas
+                                ref={debugCanvasRef}
+                                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                            />
                         </div>
-
-                        {/* Show Camera */}
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm font-light flex items-center gap-2">
-                                {showCamera ? <Eye size={14} /> : <EyeOff size={14} />} Debug View
-                            </span>
-                            <button
-                                onClick={() => setShowCamera(!showCamera)}
-                                className={`w-10 h-6 rounded-full p-1 transition-colors ${showCamera ? "bg-blue-500" : "bg-white/20"}`}
-                            >
-                                <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${showCamera ? "translate-x-4" : ""}`} />
-                            </button>
-                        </div>
-
-                        {cameraError && (
-                            <div className="mt-4 p-2 bg-red-500/20 text-red-200 text-xs rounded">
-                                {cameraError}
-                            </div>
-                        )}
-
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Debug Video Feed */}
-            <div className="relative">
-                <AnimatePresence>
-                    {showCamera && (
-                        <motion.div
-                            className="relative rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm"
-                            initial={{ opacity: 0, height: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, height: "auto", scale: 1 }}
-                            exit={{ opacity: 0, height: 0, scale: 0.8 }}
-                        >
-                            <div className="relative w-64 h-48">
-                                <video
-                                    ref={debugVideoRef}
-                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                />
-                                <canvas
-                                    ref={debugCanvasRef}
-                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                                />
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Always render hidden tracking video to maintain stream and detection */}
-                <div className="fixed opacity-0 pointer-events-none w-1 h-1 overflow-hidden">
-                    <video ref={videoRef} autoPlay playsInline muted />
-                </div>
+            {/* Always render hidden tracking video to maintain stream and detection */}
+            <div className="fixed opacity-0 pointer-events-none w-1 h-1 overflow-hidden">
+                <video ref={videoRef} autoPlay playsInline muted />
             </div>
-        </motion.div>
+
+            {cameraError && (
+                <div className="fixed top-0 left-0 w-full p-2 bg-red-500/20 text-red-200 text-xs text-center z-[200]">
+                    Face Tracking Error: {cameraError}
+                </div>
+            )}
+        </div>
     );
 };

@@ -8,8 +8,8 @@ interface BackgroundToggleProps {
 }
 
 const options: { label: string; value: BackgroundType }[] = [
-  { label: "Classic", value: "original" },
   { label: "Mixed Reality", value: "mixed-reality" },
+  { label: "Virtual Reality", value: "original" },
 ];
 
 export const BackgroundToggle: React.FC<BackgroundToggleProps> = ({

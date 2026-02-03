@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { defineProperties } from "figma:react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { TextEditor } from "./components/TextEditor";
 import { GazeIndicator } from "./components/GazeIndicator";
-import { VoiceVisualizer, SpeechStatus } from "./components/VoiceVisualizer";
-import { InfoPanel } from "./components/InfoPanel";
+import { SpeechStatus } from "./components/VoiceVisualizer";
+
 
 import {
   BackgroundManager,
@@ -13,6 +13,7 @@ import {
 import { BackgroundToggle } from "./components/BackgroundToggle";
 import { HandTrackingManager } from "./components/HandTrackingManager";
 import { FaceTrackingManager } from "./components/FaceTrackingManager";
+import { SettingsPanel } from "./components/SettingsPanel";
 
 export default function SpatialTextInput({
   showGazeIndicator = true,
@@ -27,7 +28,22 @@ export default function SpatialTextInput({
     "granted" | "denied" | "prompt" | "unknown"
   >("unknown");
   const [backgroundType, setBackgroundType] =
-    useState<BackgroundType>("original");
+    useState<BackgroundType>("mixed-reality");
+
+  // --- Hand Tracking State ---
+  const [handTrackingEnabled, setHandTrackingEnabled] = useState(true);
+  const [handDominantHand, setHandDominantHand] = useState<"Left" | "Right">("Left");
+  const [handTrackingMode, setHandTrackingMode] = useState<"Center" | "Relative">("Center");
+  const [handSensitivity, setHandSensitivity] = useState(25);
+  const [showHandCamera, setShowHandCamera] = useState(true);
+
+  // --- Face Tracking State ---
+  const [faceTrackingEnabled, setFaceTrackingEnabled] = useState(true);
+  const [showFaceDebug, setShowFaceDebug] = useState(false);
+
+  // --- Dev State ---
+  const cameraParamsRef = useRef<{ cam: any, target: any, headZ: number } | null>(null);
+  const [cameraDebugInfo, setCameraDebugInfo] = useState<string>("");
 
   // Head Tracking State (MotionValues for performance)
   const headX = useMotionValue(0);
@@ -67,6 +83,33 @@ export default function SpatialTextInput({
     }
   };
 
+  const handleCameraUpdate = useCallback((cam: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }) => {
+    cameraParamsRef.current = {
+      cam,
+      target,
+      headZ: headZ.get()
+    };
+    // Optional: Update debug string less frequently if performance is key
+    setCameraDebugInfo(`CAM: [${cam.x.toFixed(2)}, ${cam.y.toFixed(2)}, ${cam.z.toFixed(2)}]
+TGT: [${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)}]
+Head Z: ${headZ.get().toFixed(3)}`);
+  }, [headZ]);
+
+  const handleCopyParams = useCallback(() => {
+    if (cameraParamsRef.current) {
+      const { cam, target, headZ } = cameraParamsRef.current;
+      const text = `CAM: [${cam.x.toFixed(2)}, ${cam.y.toFixed(2)}, ${cam.z.toFixed(2)}]
+TGT: [${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)}]
+Head Z: ${headZ.toFixed(3)}`;
+
+      navigator.clipboard.writeText(text);
+      // Just a simple alert for now, or use a toast if available
+      alert("Camera params copied to clipboard!");
+    } else {
+      alert("No camera data available to copy.");
+    }
+  }, []);
+
   // Request microphone permissions explicitly
   const requestMicrophonePermission = () => {
     navigator.mediaDevices
@@ -104,9 +147,20 @@ export default function SpatialTextInput({
         headX={headX}
         headY={headY}
         headZ={headZ}
+        onCameraUpdate={handleCameraUpdate}
       />
-      <HandTrackingManager />
-      <FaceTrackingManager onHeadMove={handleHeadMove} />
+      <HandTrackingManager
+        isTracking={handTrackingEnabled}
+        targetHand={handDominantHand}
+        trackingMode={handTrackingMode}
+        sensitivity={handSensitivity}
+        showCamera={showHandCamera}
+      />
+      <FaceTrackingManager
+        onHeadMove={handleHeadMove}
+        isTracking={faceTrackingEnabled}
+        showDebugView={showFaceDebug}
+      />
 
       <motion.div
         className="w-full max-w-4xl z-10 origin-center"
@@ -129,14 +183,7 @@ export default function SpatialTextInput({
           >
             The Next Paradigm of Input
           </motion.h1>
-          <motion.p
-            className="text-lg text-white/60 font-light"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            Look to Select, Speak to Refine
-          </motion.p>
+
         </header>
 
         <div className="relative">
@@ -149,7 +196,26 @@ export default function SpatialTextInput({
 
       <GazeIndicator isActive={showGazeIndicator} />
 
-      <InfoPanel />
+
+
+      <SettingsPanel
+        handTrackingEnabled={handTrackingEnabled}
+        setHandTrackingEnabled={setHandTrackingEnabled}
+        handDominantHand={handDominantHand}
+        setHandDominantHand={setHandDominantHand}
+        handTrackingMode={handTrackingMode}
+        setHandTrackingMode={setHandTrackingMode}
+        handSensitivity={handSensitivity}
+        setHandSensitivity={setHandSensitivity}
+        showHandCamera={showHandCamera}
+        setShowHandCamera={setShowHandCamera}
+        faceTrackingEnabled={faceTrackingEnabled}
+        setFaceTrackingEnabled={setFaceTrackingEnabled}
+        showFaceDebug={showFaceDebug}
+        setShowFaceDebug={setShowFaceDebug}
+        onCopyParams={handleCopyParams}
+        cameraDebugInfo={cameraDebugInfo}
+      />
 
       {/* Control panel area in top left */}
       <div className="absolute top-4 left-4 z-50">
@@ -166,22 +232,20 @@ export default function SpatialTextInput({
       </div>
 
       <motion.div
-        className="absolute bottom-4 left-4 text-sm text-white/40 font-light"
+        className="absolute bottom-6 right-6 flex items-center gap-3 text-white/40 font-light pointer-events-none"
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.7 }}
         transition={{ delay: 1 }}
       >
-        Prototype for Apple Vision Pro • Spatial Computing
-      </motion.div>
-
-      {/* Version number in bottom right corner */}
-      <motion.div
-        className="absolute bottom-4 right-4 text-sm text-white/40 font-light"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.7 }}
-        transition={{ delay: 1 }}
-      >
-        v2.6.0
+        <div className="flex flex-col items-end">
+          <span className="text-[1rem] whitespace-nowrap">Prototype for Spatial Computing • v2.6.0</span>
+        </div>
+        <div className="h-8 w-px bg-white/10 mx-1" />
+        <img
+          src="media/MHCID-LOGO.png"
+          alt="MHCID Logo"
+          className="h-[4rem] w-auto brightness-200 contrast-125"
+        />
       </motion.div>
     </div>
   );

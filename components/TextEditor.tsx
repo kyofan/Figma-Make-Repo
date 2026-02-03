@@ -358,50 +358,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     }
   };
 
-  // Simulate voice input for buttons
-  const simulateVoiceInput = (input: string) => {
-    const activeIndex = activeWordIndexRef.current;
 
-    if (activeIndex === null) {
-      showTemporaryFeedback("Please hover over a word first");
-      return;
-    }
-
-    console.log(`Simulating voice input: "${input}" for word: ${activeIndex}`);
-
-    // Update state to show we're listening
-    isListeningRef.current = true;
-    setIsListening(true);
-
-    // Set the transcript
-    realTimeSpeechTextRef.current = input;
-
-    // Notify parent for visualization
-    if (onListeningChange) {
-      onListeningChange(true, { text: input, status: "processing" });
-    }
-
-    // Show feedback
-    showTemporaryFeedback(`Simulated: "${input}"`);
-
-    // Apply after a short delay
-    setTimeout(() => {
-      // Apply semantic edit
-      applySemanticEdit(activeIndex, input);
-
-      // Reset listening state
-      isListeningRef.current = false;
-      setIsListening(false);
-      setFocusedWordIndex(null);
-      setLockedWordIndex(null);
-      realTimeSpeechTextRef.current = "";
-
-      // Notify parent
-      if (onListeningChange) {
-        onListeningChange(false, { text: "", status: "idle" });
-      }
-    }, 1000);
-  };
 
   // Improved semantic edit function that correctly handles context and grammar
   const applySemanticEdit = (wordIndex: number, newContent: string) => {
@@ -708,7 +665,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         ref={textContainerRef}
         className="text-editor-container w-full max-w-3xl bg-white/5 backdrop-blur-lg border border-white/10 shadow-lg rounded-3xl p-8 my-6"
       >
-        <div className="text-content text-2xl font-light leading-relaxed tracking-wide text-white/90">
+        <div className="text-content text-3xl font-light leading-relaxed tracking-wide text-white/90">
           {words.map((word, index) => {
             const isActive =
               index === focusedWordIndex || index === lockedWordIndex;
@@ -863,49 +820,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
           )}
         </div>
 
-        <div className="voice-simulation mt-4 w-full">
-          <p className="text-center text-white/60 mb-3 text-sm font-light">
-            Simulate Voice Commands:
-          </p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <button
-              onClick={() => simulateVoiceInput("next Tuesday")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "next Tuesday"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("at 3 PM")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "at 3 PM"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("in the conference room")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "in the conference room"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("tomorrow")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "tomorrow"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("with the design team")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "with the design team"
-            </button>
-            <button
-              onClick={() => simulateVoiceInput("online")}
-              className="px-4 py-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-white/80 font-light text-sm hover:bg-white/10 transition-all"
-            >
-              "online"
-            </button>
-          </div>
-        </div>
+
       </div>
     </div>
   );
