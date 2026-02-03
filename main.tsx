@@ -11,7 +11,6 @@ import {
   BackgroundType,
 } from "./components/BackgroundManager";
 import { BackgroundToggle } from "./components/BackgroundToggle";
-import { ParallaxSettings } from "./components/ParallaxSettings";
 import { HandTrackingManager } from "./components/HandTrackingManager";
 import { FaceTrackingManager } from "./components/FaceTrackingManager";
 
@@ -30,31 +29,36 @@ export default function SpatialTextInput({
   const [backgroundType, setBackgroundType] =
     useState<BackgroundType>("original");
 
-  // Parallax Settings (A/B Testing)
-  const [smoothingEnabled, setSmoothingEnabled] = useState(true);
-  const [parallaxIntensity, setParallaxIntensity] = useState(50);
-  const [renderMode, setRenderMode] = useState<"gltf" | "splat">("gltf");
-
   // Head Tracking State (MotionValues for performance)
   const headX = useMotionValue(0);
   const headY = useMotionValue(0);
-
-  // UI Depth / Parallax Transforms
+  const headZ = useMotionValue(0);
+  // UI Depth / Parallax Transforms (for 2D elements)
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
 
-  const activeHeadX = smoothingEnabled ? smoothX : headX;
-  const activeHeadY = smoothingEnabled ? smoothY : headY;
+  const activeHeadX = smoothX;
+  const activeHeadY = smoothY;
 
   const uiRotateX = useTransform(activeHeadY, (y) => y * 5); // Max 5deg tilt
   const uiRotateY = useTransform(activeHeadX, (x) => x * -5); // Max 5deg tilt
   const uiX = useTransform(activeHeadX, (x) => x * -15); // Horizontal parallax
   const uiY = useTransform(activeHeadY, (y) => y * -15); // Vertical parallax
 
-  const handleHeadMove = useCallback((pos: { x: number; y: number; z: number }) => {
-    headX.set(pos.x);
-    headY.set(pos.y);
-  }, [headX, headY]);
+  const handleHeadMove = useCallback(
+    (pos: { x: number; y: number; z: number }) => {
+      headX.set(pos.x);
+      headY.set(pos.y);
+      // z is usually distance. We might need to scale it or just pass it raw.
+      // FaceTrackingManager returns rawZ.
+      headZ.set(pos.z);
+    },
+    [headX, headY, headZ],
+  );
+
+  const handleBackgroundChange = (newType: BackgroundType) => {
+    setBackgroundType(newType);
+  };
 
   const handleListeningChange = (listening: boolean, data?: SpeechStatus) => {
     setIsListening(listening);
@@ -99,21 +103,10 @@ export default function SpatialTextInput({
         type={backgroundType}
         headX={headX}
         headY={headY}
-        smoothingEnabled={smoothingEnabled}
-        parallaxIntensity={parallaxIntensity}
-        renderMode={renderMode}
+        headZ={headZ}
       />
       <HandTrackingManager />
       <FaceTrackingManager onHeadMove={handleHeadMove} />
-
-      <ParallaxSettings
-        smoothingEnabled={smoothingEnabled}
-        setSmoothingEnabled={setSmoothingEnabled}
-        intensity={parallaxIntensity}
-        setIntensity={setParallaxIntensity}
-        renderMode={renderMode}
-        setRenderMode={setRenderMode}
-      />
 
       <motion.div
         className="w-full max-w-4xl z-10 origin-center"
@@ -167,7 +160,7 @@ export default function SpatialTextInput({
         >
           <BackgroundToggle
             currentType={backgroundType}
-            onTypeChange={setBackgroundType}
+            onTypeChange={handleBackgroundChange}
           />
         </motion.div>
       </div>
@@ -188,7 +181,7 @@ export default function SpatialTextInput({
         animate={{ opacity: 0.7 }}
         transition={{ delay: 1 }}
       >
-        v2.2.0
+        v2.5.0
       </motion.div>
     </div>
   );

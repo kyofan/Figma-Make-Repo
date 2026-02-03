@@ -1,26 +1,35 @@
 import React from "react";
 import { motion, MotionValue, useTransform, useSpring } from "motion/react";
-import { Three3DScene } from "./Three3DScene";
+import { StandaloneSplatViewer } from "./StandaloneSplatViewer";
 
-export type BackgroundType = "original" | "bg" | "bg1" | "parallax" | "3d-scene";
+export type BackgroundType =
+  | "original"
+  | "bg"
+  | "bg1"
+  | "mixed-reality";
 
 interface BackgroundManagerProps {
   type: BackgroundType;
   headX: MotionValue<number>;
   headY: MotionValue<number>;
+  headZ?: MotionValue<number>;
   smoothingEnabled?: boolean;
   parallaxIntensity?: number;
   renderMode?: "gltf" | "splat";
+  onCameraUpdate?: (cam: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }) => void;
 }
 
 export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   type,
   headX,
   headY,
-  smoothingEnabled = true,
+  headZ,
+  smoothingEnabled = false, // Default to OFF per user request
   parallaxIntensity = 50,
   renderMode = "gltf",
+  onCameraUpdate,
 }) => {
+  console.log("BackgroundManager rendering type:", type);
   // Smooth the raw input
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
@@ -75,41 +84,19 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
     );
   }
 
-  // Parallax Mode
-  if (type === "parallax") {
-    return (
-      <div className="absolute inset-0 z-0 overflow-hidden bg-black">
-        <motion.div
-            className="absolute inset-[-5%] w-[110%] h-[110%]"
-            style={{
-                x: parallaxX,
-                y: parallaxY
-            }}
-        >
-             <img
-                src="media/bg.webp"
-                alt="Background"
-                className="w-full h-full object-cover opacity-80"
-            />
-        </motion.div>
-
-        {/* Vignette / Glass Reflection effect */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none mix-blend-overlay" />
-        <div className="absolute inset-0 bg-black/40" />
-      </div>
-    );
-  }
-
-  // 3D Scene Mode
-  if (type === "3d-scene") {
+  // Mixed Reality Mode (formerly Livingroom) - Uses standalone viewer
+  if (type === "mixed-reality") {
     return (
       <div className="absolute inset-0 z-0 bg-black">
-         <Three3DScene
-            headX={effectiveX}
-            headY={effectiveY}
-            smoothingEnabled={smoothingEnabled}
-            renderMode={renderMode}
-         />
+        <StandaloneSplatViewer
+          url="Livingroom-in-Taipei.ply"
+          className="w-full h-full"
+          headX={effectiveX}
+          headY={effectiveY}
+          headZ={headZ}
+          smoothingEnabled={smoothingEnabled}
+          onCameraUpdate={onCameraUpdate}
+        />
       </div>
     );
   }
