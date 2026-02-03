@@ -30,7 +30,8 @@
         "main.tsx",
         "entry.tsx",
         "components",
-        "figma-mock.ts"
+        "figma-mock.ts",
+        "types"
     ],
     "references": []
 }

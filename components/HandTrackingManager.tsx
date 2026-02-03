@@ -7,15 +7,25 @@ import {
     NormalizedLandmark
 } from "@mediapipe/tasks-vision";
 import { motion, AnimatePresence } from "motion/react";
-import { Settings, Eye, EyeOff, Hand, MousePointer2, Monitor, Check, Crosshair, Sliders } from "lucide-react";
 
 // Types
 interface HandTrackingManagerProps {
     onHandActiveChange?: (isActive: boolean) => void;
+    // Settings Props
+    isTracking: boolean;
+    targetHand: "Right" | "Left";
+    trackingMode: "Center" | "Relative";
+    sensitivity: number;
+    showCamera: boolean;
 }
 
 export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
-    onHandActiveChange
+    onHandActiveChange,
+    isTracking,
+    targetHand,
+    trackingMode,
+    sensitivity,
+    showCamera
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -28,14 +38,6 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     // Cursor State
     const [cursorPosition, setCursorPosition] = useState<{ x: number, y: number } | null>(null);
     const [isPinching, setIsPinching] = useState(false);
-
-    // Settings
-    const [showCamera, setShowCamera] = useState(true);
-    const [isTracking, setIsTracking] = useState(true);
-    const [targetHand, setTargetHand] = useState<"Right" | "Left">("Left");
-    const [trackingMode, setTrackingMode] = useState<"Center" | "Relative">("Center");
-    const [sensitivity, setSensitivity] = useState(25); // 1-100 linear value, default 25 = 2.65x multiplier
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Tracking Logic Refs
     const handStartPosRef = useRef<{ x: number, y: number } | null>(null);
@@ -160,6 +162,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
             if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
             requestRef.current = requestAnimationFrame(predict);
+            setCursorPosition(null); // Clear cursor when not tracking
             return;
         }
 
@@ -211,7 +214,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
             if (targetIndex !== -1) {
                 const landmarks = results.landmarks[targetIndex];
 
-                // Draw
+                // Draw component handles debug drawing internally if needed, but we draw here for the camera feed
                 const drawingUtils = new DrawingUtils(canvasCtx);
                 drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
                     color: "#00FF00",
@@ -452,166 +455,49 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
 
     return (
         <>
-            {/* Controls & Video Container */}
-            <motion.div
-                className="fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-            >
-                {/* Toggle Button */}
-                <button
-                    onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                    className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-lg hover:bg-white/20 transition-all"
-                >
-                    <Settings size={20} />
-                </button>
+            {/* Video Feed (Visible if enabled) */}
+            <AnimatePresence>
+                {showCamera && (
+                    <motion.div
+                        className="fixed bottom-4 left-4 z-[90] pointer-events-none rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm"
+                        initial={{ opacity: 0, height: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, height: "auto", scale: 1 }}
+                        exit={{ opacity: 0, height: 0, scale: 0.8 }}
+                    >
+                        <div className="relative w-64 h-48">
+                            <video
+                                ref={videoRef}
+                                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                                autoPlay
+                                playsInline
+                                muted
+                            />
+                            <canvas
+                                ref={canvasRef}
+                                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                            />
+                            {/* Status Indicator */}
+                            <div className={`absolute top-2 left-2 w-2 h-2 rounded-full ${isTracking && handLandmarker ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"}`} />
 
-                {/* Settings Panel */}
-                <AnimatePresence>
-                    {isSettingsOpen && (
-                        <motion.div
-                            className="mb-2 p-4 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 text-white w-64 shadow-2xl"
-                            initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                        >
-                            <h3 className="text-sm font-semibold mb-4 text-white/80 uppercase tracking-wider">Hand Tracking</h3>
-
-                            <div className="space-y-4">
-                                {/* Toggle Tracking */}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-light flex items-center gap-2">
-                                        <MousePointer2 size={14} /> Tracking
-                                    </span>
-                                    <button
-                                        onClick={() => setIsTracking(!isTracking)}
-                                        className={`w-10 h-6 rounded-full p-1 transition-colors ${isTracking ? "bg-blue-500" : "bg-white/20"}`}
-                                    >
-                                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isTracking ? "translate-x-4" : ""}`} />
-                                    </button>
+                            {cameraError && (
+                                <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-red-400 text-sm bg-black/80">
+                                    {cameraError}
                                 </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                                {/* Handedness */}
-                                <div className="space-y-2">
-                                    <span className="text-sm font-light flex items-center gap-2">
-                                        <Hand size={14} /> Dominant Hand
-                                    </span>
-                                    <div className="flex bg-white/10 rounded-lg p-1">
-                                        <button
-                                            onClick={() => setTargetHand("Left")}
-                                            className={`flex-1 py-1.5 text-xs rounded-md transition-all ${targetHand === "Left" ? "bg-white/20 shadow-sm" : "text-white/40 hover:text-white/60"}`}
-                                        >
-                                            Left
-                                        </button>
-                                        <button
-                                            onClick={() => setTargetHand("Right")}
-                                            className={`flex-1 py-1.5 text-xs rounded-md transition-all ${targetHand === "Right" ? "bg-white/20 shadow-sm" : "text-white/40 hover:text-white/60"}`}
-                                        >
-                                            Right
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="h-px bg-white/10 my-2" />
-
-                                {/* Tracking Mode */}
-                                <div className="space-y-2">
-                                    <span className="text-sm font-light flex items-center gap-2">
-                                        <Crosshair size={14} /> Orientation
-                                    </span>
-                                    <div className="flex bg-white/10 rounded-lg p-1">
-                                        <button
-                                            onClick={() => setTrackingMode("Center")}
-                                            className={`flex-1 py-1.5 text-xs rounded-md transition-all ${trackingMode === "Center" ? "bg-white/20 shadow-sm" : "text-white/40 hover:text-white/60"}`}
-                                        >
-                                            Center
-                                        </button>
-                                        <button
-                                            onClick={() => setTrackingMode("Relative")}
-                                            className={`flex-1 py-1.5 text-xs rounded-md transition-all ${trackingMode === "Relative" ? "bg-white/20 shadow-sm" : "text-white/40 hover:text-white/60"}`}
-                                        >
-                                            Relative
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Sensitivity Slider */}
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center text-sm font-light">
-                                        <span className="flex items-center gap-2"><Sliders size={14} /> Speed</span>
-                                        <span className="text-xs text-white/60">{sensitivity}%</span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min="1"
-                                        max="100"
-                                        value={sensitivity}
-                                        onChange={(e) => setSensitivity(Number(e.target.value))}
-                                        className="w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-                                    />
-                                </div>
-
-                                {/* Show Camera */}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-light flex items-center gap-2">
-                                        {showCamera ? <Eye size={14} /> : <EyeOff size={14} />} Camera Feed
-                                    </span>
-                                    <button
-                                        onClick={() => setShowCamera(!showCamera)}
-                                        className={`w-10 h-6 rounded-full p-1 transition-colors ${showCamera ? "bg-blue-500" : "bg-white/20"}`}
-                                    >
-                                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${showCamera ? "translate-x-4" : ""}`} />
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Video Feed */}
-                <AnimatePresence>
-                    {showCamera && (
-                        <motion.div
-                            className="relative rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-black/50 backdrop-blur-sm"
-                            initial={{ opacity: 0, height: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, height: "auto", scale: 1 }}
-                            exit={{ opacity: 0, height: 0, scale: 0.8 }}
-                        >
-                            <div className="relative w-64 h-48">
-                                <video
-                                    ref={videoRef}
-                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                />
-                                <canvas
-                                    ref={canvasRef}
-                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                                />
-                                {/* Status Indicator */}
-                                <div className={`absolute top-2 left-2 w-2 h-2 rounded-full ${isTracking && handLandmarker ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"}`} />
-
-                                {cameraError && (
-                                    <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-red-400 text-sm bg-black/80">
-                                        {cameraError}
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Hidden elements when camera is hidden but tracking is on */}
-                <div className="fixed opacity-0 pointer-events-none">
-                    {!showCamera && (
-                        <>
-                            <video ref={videoRef} autoPlay playsInline muted />
-                            <canvas ref={canvasRef} />
-                        </>
-                    )}
-                </div>
-            </motion.div>
+            {/* Hidden elements when camera is hidden but tracking is on */}
+            <div className="fixed opacity-0 pointer-events-none">
+                {!showCamera && (
+                    <>
+                        <video ref={videoRef} autoPlay playsInline muted />
+                        <canvas ref={canvasRef} />
+                    </>
+                )}
+            </div>
 
             {/* Virtual Cursor */}
             {isTracking && cursorPosition && (

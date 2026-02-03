@@ -184,30 +184,11 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
         };
     }, [headX, headY, onCameraUpdate, currentHeadZ]);
 
-    const handleCopyParams = () => {
-        if (!viewerRef.current?.camera) return;
 
-        const cam = viewerRef.current.camera.position;
-        const tgt = viewerRef.current.controls?.target || { x: 0, y: 0, z: 0 };
-
-        const text = `CAM: [${cam.x.toFixed(2)}, ${cam.y.toFixed(2)}, ${cam.z.toFixed(2)}]
-TGT: [${tgt.x.toFixed(2)}, ${tgt.y.toFixed(2)}, ${tgt.z.toFixed(2)}]
-Head Z: ${currentHeadZ.toFixed(3)}`;
-
-        navigator.clipboard.writeText(text);
-        alert("Camera params copied to clipboard!");
-    };
 
     return (
         <div ref={containerRef} className={`relative ${className}`} style={{ width: '100%', height: '100%' }}>
-            {/* Copy Debug Button */}
-            <button
-                onClick={handleCopyParams}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-[200] bg-black/50 hover:bg-black/70 text-white px-3 py-2 rounded-lg backdrop-blur-md border border-white/20 text-xs font-mono transition-all opacity-50 hover:opacity-100 flex flex-col gap-1 items-start cursor-pointer pointer-events-auto"
-            >
-                <span className="font-bold">📷 COPY PARAMS</span>
-                <span className="text-[10px] opacity-70">Z-Track: {currentHeadZ.toFixed(3)}</span>
-            </button>
+
         </div>
     );
 };
