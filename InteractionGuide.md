@@ -142,8 +142,8 @@ Both methods work identically:
 
 | Method | Trigger | Visual | Release |
 |--------|---------|--------|---------|
-| **Keyboard** | Hold Spacebar | Blue pulsing indicator appears | Release Spacebar |
-| **Hand Gesture** | Hold pinch for 300ms | Same blue indicator | Release pinch |
+| **Keyboard** | Hold Spacebar | Green pulsing indicator appears | Release Spacebar |
+| **Hand Gesture** | Hold pinch for 300ms | Same green indicator | Release pinch |
 
 **Important**: Voice input requires being in the text area:
 - **Word editing**: Must hover over a word (or have word locked)
@@ -155,7 +155,7 @@ When you activate voice input:
 
 **1. Activation** (you hold spacebar/pinch):
 - Voice recognition starts immediately
-- Blue pulsing circle appears in the info panel
+- Green pulsing circle appears in the info panel
 - Feedback shows: "Listening... (selected word: [word])"
 
 **2. Speaking** (voice is being processed):
