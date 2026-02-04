@@ -14,6 +14,8 @@ import { BackgroundToggle } from "./components/BackgroundToggle";
 import { HandTrackingManager } from "./components/HandTrackingManager";
 import { FaceTrackingManager } from "./components/FaceTrackingManager";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { EyeTrackingManager } from "./components/EyeTrackingManager";
+import { FoveatedOverlay } from "./components/FoveatedOverlay";
 
 export default function SpatialTextInput({
   showGazeIndicator = true,
@@ -42,6 +44,14 @@ export default function SpatialTextInput({
   const [headTrackingSmoothing, setHeadTrackingSmoothing] = useState(true);
   const [showFaceDebug, setShowFaceDebug] = useState(false);
 
+  // --- Eye Tracking State ---
+  const [eyeTrackingEnabled, setEyeTrackingEnabled] = useState(false);
+  const [cursorMode, setCursorMode] = useState<"hand" | "eye">("hand");
+  const [isCalibrationActive, setIsCalibrationActive] = useState(false);
+  const [eyeCursorPos, setEyeCursorPos] = useState<{x: number, y: number} | null>(null);
+  const [rawHeadZ, setRawHeadZ] = useState(0);
+
+
   // --- Dev State ---
   const cameraParamsRef = useRef<{ cam: any, target: any, headZ: number } | null>(null);
   const [cameraDebugInfo, setCameraDebugInfo] = useState<string>("");
@@ -69,6 +79,7 @@ export default function SpatialTextInput({
       // z is usually distance. We might need to scale it or just pass it raw.
       // FaceTrackingManager returns rawZ.
       headZ.set(pos.z);
+      setRawHeadZ(pos.z);
     },
     [headX, headY, headZ],
   );
@@ -157,12 +168,29 @@ Head Z: ${headZ.toFixed(3)}`;
         trackingMode={handTrackingMode}
         sensitivity={handSensitivity}
         showCamera={showHandCamera}
+        overrideCursorPos={cursorMode === "eye" && eyeTrackingEnabled ? eyeCursorPos : null}
       />
       <FaceTrackingManager
         onHeadMove={handleHeadMove}
         isTracking={faceTrackingEnabled}
         showDebugView={showFaceDebug}
       />
+
+      <FoveatedOverlay
+         gazeX={eyeCursorPos?.x ?? 0}
+         gazeY={eyeCursorPos?.y ?? 0}
+         depthZ={rawHeadZ}
+         enabled={eyeTrackingEnabled}
+      />
+
+      {eyeTrackingEnabled && (
+        <EyeTrackingManager
+           onGazeMove={setEyeCursorPos}
+           isCalibrationActive={isCalibrationActive}
+           onCalibrationComplete={() => setIsCalibrationActive(false)}
+        />
+      )}
+
 
       <motion.div
         className="w-full max-w-4xl z-10 origin-center"
@@ -217,6 +245,13 @@ Head Z: ${headZ.toFixed(3)}`;
         setHeadTrackingSmoothing={setHeadTrackingSmoothing}
         showFaceDebug={showFaceDebug}
         setShowFaceDebug={setShowFaceDebug}
+
+        eyeTrackingEnabled={eyeTrackingEnabled}
+        setEyeTrackingEnabled={setEyeTrackingEnabled}
+        cursorMode={cursorMode}
+        setCursorMode={setCursorMode}
+        onCalibrateEye={() => setIsCalibrationActive(true)}
+
         onCopyParams={handleCopyParams}
         cameraDebugInfo={cameraDebugInfo}
       />

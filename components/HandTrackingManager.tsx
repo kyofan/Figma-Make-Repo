@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "motion/react";
 
 // Types
 interface HandTrackingManagerProps {
+    overrideCursorPos?: { x: number; y: number } | null;
     onHandActiveChange?: (isActive: boolean) => void;
     // Settings Props
     isTracking: boolean;
@@ -20,6 +21,7 @@ interface HandTrackingManagerProps {
 }
 
 export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
+    overrideCursorPos,
     onHandActiveChange,
     isTracking,
     targetHand,
@@ -272,7 +274,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     cursorRef.current.x += (targetX - cursorRef.current.x) * smoothingFactor;
                     cursorRef.current.y += (targetY - cursorRef.current.y) * smoothingFactor;
 
-                    setCursorPosition({ ...cursorRef.current });
+                    if (overrideCursorPos) { cursorRef.current = overrideCursorPos; } setCursorPosition({ ...cursorRef.current });
 
                     const dx = indexTip.x - thumbTip.x;
                     const dy = indexTip.y - thumbTip.y;
@@ -442,7 +444,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
         canvasCtx.restore();
 
         requestRef.current = requestAnimationFrame(predict);
-    }, [handLandmarker, isTracking, targetHand, trackingMode, sensitivity]);
+    }, [handLandmarker, isTracking, targetHand, trackingMode, sensitivity, overrideCursorPos]);
 
     useEffect(() => {
         requestRef.current = requestAnimationFrame(predict);

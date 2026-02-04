@@ -23,6 +23,11 @@ interface SettingsPanelProps {
 
     onCopyParams: () => void;
     cameraDebugInfo: string;
+    eyeTrackingEnabled: boolean;
+    setEyeTrackingEnabled: (v: boolean) => void;
+    cursorMode: "hand" | "eye";
+    setCursorMode: (v: "hand" | "eye") => void;
+    onCalibrateEye: () => void;
 }
 
 type Tab = "hand" | "face" | "eye";
@@ -52,7 +57,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setShowFaceDebug,
     onCopyParams,
     cameraDebugInfo,
-}) => {
+eyeTrackingEnabled, setEyeTrackingEnabled, cursorMode, setCursorMode, onCalibrateEye }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>("hand");
 
@@ -227,14 +232,37 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: 10 }}
                                         transition={{ duration: 0.15 }}
-                                        className="space-y-4 text-center py-6"
+                                        className="space-y-5"
                                     >
-                                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto border border-white/10">
-                                            <Eye size={24} className="text-white/40" />
+                                        <ControlRow label="Enable Eye Tracking" value={eyeTrackingEnabled} onChange={setEyeTrackingEnabled} />
+
+                                        <div className="space-y-2">
+                                            <Label>Cursor Control Mode</Label>
+                                            <SegmentedControl
+                                                options={["Hand", "Eye"]}
+                                                value={cursorMode === "hand" ? "Hand" : "Eye"}
+                                                onChange={(v) => setCursorMode(v === "Hand" ? "hand" : "eye")}
+                                            />
+                                            <p className="text-xs text-white/40 font-light">
+                                                {cursorMode === "hand"
+                                                    ? "Hand moves cursor. Pinch to click."
+                                                    : "Eye moves cursor. Pinch to click."}
+                                            </p>
                                         </div>
-                                        <div>
-                                            <h3 className="text-base font-light text-white/90 mb-1">Eye Tracking</h3>
-                                            <p className="text-xs text-white/50 leading-relaxed">Coming soon.</p>
+
+                                        <div className="h-px bg-white/10 w-full" />
+
+                                        <div className="space-y-2">
+                                            <Label>Calibration</Label>
+                                            <button
+                                                onClick={onCalibrateEye}
+                                                className="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white/90 text-sm font-medium transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Eye size={14} /> Start Calibration
+                                            </button>
+                                            <p className="text-xs text-white/40 font-light">
+                                                Required for accurate eye tracking.
+                                            </p>
                                         </div>
                                     </motion.div>
                                 )}
