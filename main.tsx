@@ -246,30 +246,52 @@ Head Z: ${headZ.toFixed(3)}`;
 
 
 
-            {/* Global Cursor Mode Switcher */}
+                  {/* Global Cursor Mode Switcher */}
       <motion.div
-        className="fixed top-4 right-20 z-[100] flex items-center gap-2 bg-black/40 backdrop-blur-md p-1 rounded-full border border-white/10"
+        className="fixed top-4 right-20 z-[100]"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
       >
-        <button
-            onClick={() => setCursorMode("hand")}
-
-        >
-            <Hand size={14} /> Hand
-        </button>
-        <button
-            onClick={() => {
-                setCursorMode("eye");
-                if (!eyeTrackingEnabled) {
-                    setEyeTrackingEnabled(true);
-                }
-            }}
-
-        >
-            <Eye size={14} /> Eye
-        </button>
+          <div className="flex p-1 bg-white/10 backdrop-blur-3xl rounded-full border border-white/10 shadow-2xl relative overflow-hidden">
+            <button
+                onClick={() => setCursorMode("hand")}
+                className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-colors duration-200 outline-none
+                    ${cursorMode === "hand" ? "text-white" : "text-white/50 hover:text-white/80"}`}
+            >
+                {cursorMode === "hand" && (
+                    <motion.div
+                        layoutId="global-cursor-mode"
+                        className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full border border-white/20 shadow-sm"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                    <Hand size={14} /> Hand
+                </span>
+            </button>
+            <button
+                onClick={() => {
+                    setCursorMode("eye");
+                    if (!eyeTrackingEnabled) {
+                        setEyeTrackingEnabled(true);
+                    }
+                }}
+                className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-colors duration-200 outline-none
+                    ${cursorMode === "eye" ? "text-white" : "text-white/50 hover:text-white/80"}`}
+            >
+                {cursorMode === "eye" && (
+                    <motion.div
+                        layoutId="global-cursor-mode"
+                        className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full border border-white/20 shadow-sm"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                    <Eye size={14} /> Eye
+                </span>
+            </button>
+        </div>
       </motion.div>
 
       {/* Calibration Prompt */}

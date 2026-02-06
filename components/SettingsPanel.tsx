@@ -239,7 +239,7 @@ eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEna
                                         transition={{ duration: 0.15 }}
                                         className="space-y-5"
                                     >
-                                        <ControlRow label="Enable Eye Tracking" value={eyeTrackingEnabled} onChange={setEyeTrackingEnabled} />
+                                        <ControlRow label="Enable Tracking" value={eyeTrackingEnabled} onChange={setEyeTrackingEnabled} />
                                         <ControlRow label="Foveated Rendering" value={foveatedRenderingEnabled} onChange={setFoveatedRenderingEnabled} />
                                         <p className="text-xs text-white/40 font-light -mt-3">Blurs peripheral vision.</p>
                                         <div className="space-y-2">
