@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "motion/react";
 interface HandTrackingManagerProps {
     overrideCursorPosRef?: React.MutableRefObject<{ x: number; y: number } | null>;
     onHandActiveChange?: (isActive: boolean) => void;
+    disableHandCursor?: boolean;
     // Settings Props
     isTracking: boolean;
     targetHand: "Right" | "Left";
@@ -23,6 +24,7 @@ interface HandTrackingManagerProps {
 export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     overrideCursorPosRef,
     onHandActiveChange,
+    disableHandCursor,
     isTracking,
     targetHand,
     trackingMode,
@@ -271,8 +273,8 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                         targetY = (window.innerHeight / 2) + dy * sensitivityMultiplier;
                     }
 
-                    cursorRef.current.x += (targetX - cursorRef.current.x) * smoothingFactor;
-                    cursorRef.current.y += (targetY - cursorRef.current.y) * smoothingFactor;
+                    if (!disableHandCursor) { cursorRef.current.x += (targetX - cursorRef.current.x) * smoothingFactor; }
+                    if (!disableHandCursor) { cursorRef.current.y += (targetY - cursorRef.current.y) * smoothingFactor; }
 
                     if (overrideCursorPosRef?.current) { cursorRef.current = overrideCursorPosRef.current; } setCursorPosition({ ...cursorRef.current });
 
@@ -444,7 +446,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
         canvasCtx.restore();
 
         requestRef.current = requestAnimationFrame(predict);
-    }, [handLandmarker, isTracking, targetHand, trackingMode, sensitivity]);
+    }, [handLandmarker, isTracking, targetHand, trackingMode, sensitivity, disableHandCursor]);
 
     useEffect(() => {
         requestRef.current = requestAnimationFrame(predict);

@@ -182,6 +182,7 @@ Head Z: ${headZ.toFixed(3)}`;
         trackingMode={handTrackingMode}
         sensitivity={handSensitivity}
         showCamera={showHandCamera}
+        disableHandCursor={cursorMode === "eye"}
         overrideCursorPosRef={cursorMode === "eye" && eyeTrackingEnabled ? eyeCursorRef : undefined}
       />
       <FaceTrackingManager
