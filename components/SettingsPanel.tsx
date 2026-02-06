@@ -25,11 +25,11 @@ interface SettingsPanelProps {
     cameraDebugInfo: string;
     eyeTrackingEnabled: boolean;
     setEyeTrackingEnabled: (v: boolean) => void;
-    cursorMode: "hand" | "eye";
-    setCursorMode: (v: "hand" | "eye") => void;
     onCalibrateEye: () => void;
     foveatedRenderingEnabled: boolean;
     setFoveatedRenderingEnabled: (v: boolean) => void;
+    foveatedRadius: number;
+    setFoveatedRadius: (v: number) => void;
 }
 
 type Tab = "hand" | "face" | "eye";
@@ -59,7 +59,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setShowFaceDebug,
     onCopyParams,
     cameraDebugInfo,
-eyeTrackingEnabled, setEyeTrackingEnabled, cursorMode, setCursorMode, onCalibrateEye , foveatedRenderingEnabled, setFoveatedRenderingEnabled }) => {
+eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEnabled, setFoveatedRenderingEnabled , foveatedRadius, setFoveatedRadius }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>("hand");
 
@@ -145,17 +145,7 @@ eyeTrackingEnabled, setEyeTrackingEnabled, cursorMode, setCursorMode, onCalibrat
                         </div>
 
                                                 {/* Global Settings */}
-                        <div className="px-5 pt-5 pb-2">
-                             <div className="space-y-2">
-                                <Label>Cursor Control Source</Label>
-                                <SegmentedControl
-                                    options={["Hand", "Eye"]}
-                                    value={cursorMode === "hand" ? "Hand" : "Eye"}
-                                    onChange={(v) => setCursorMode(v === "Hand" ? "hand" : "eye")}
-                                />
-                            </div>
-                            <div className="h-px bg-white/10 w-full mt-4" />
-                        </div>
+
 
                         {/* Content Area */}
                         <div className="p-5 space-y-5 max-h-[40vh] overflow-y-auto pt-2">
@@ -252,6 +242,22 @@ eyeTrackingEnabled, setEyeTrackingEnabled, cursorMode, setCursorMode, onCalibrat
                                         <ControlRow label="Enable Eye Tracking" value={eyeTrackingEnabled} onChange={setEyeTrackingEnabled} />
                                         <ControlRow label="Foveated Rendering" value={foveatedRenderingEnabled} onChange={setFoveatedRenderingEnabled} />
                                         <p className="text-xs text-white/40 font-light -mt-3">Blurs peripheral vision.</p>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <Label>Foveal Diameter</Label>
+                                                <span className="text-xs text-white/50 font-mono">{Math.round(foveatedRadius)}px</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="150"
+                                                max="600"
+                                                step="10"
+                                                value={foveatedRadius}
+                                                onChange={(e) => setFoveatedRadius(Number(e.target.value))}
+                                                className="w-full accent-white/80 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                                                disabled={!foveatedRenderingEnabled}
+                                            />
+                                        </div>
 
 
 

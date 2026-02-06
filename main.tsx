@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { defineProperties } from "figma:react";
-import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
+import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "motion/react";
 import { TextEditor } from "./components/TextEditor";
 import { GazeIndicator } from "./components/GazeIndicator";
 import { SpeechStatus } from "./components/VoiceVisualizer";
@@ -11,6 +11,7 @@ import {
   BackgroundType,
 } from "./components/BackgroundManager";
 import { BackgroundToggle } from "./components/BackgroundToggle";
+import { Eye, Hand, MousePointer2, Settings2 } from "lucide-react";
 import { HandTrackingManager } from "./components/HandTrackingManager";
 import { FaceTrackingManager } from "./components/FaceTrackingManager";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -46,9 +47,10 @@ export default function SpatialTextInput({
 
   // --- Eye Tracking State ---
   const [eyeTrackingEnabled, setEyeTrackingEnabled] = useState(false);
-  const [foveatedRenderingEnabled, setFoveatedRenderingEnabled] = useState(true);
+  const [foveatedRenderingEnabled, setFoveatedRenderingEnabled] = useState(false);
   const [cursorMode, setCursorMode] = useState<"hand" | "eye">("hand");
   const [isCalibrationActive, setIsCalibrationActive] = useState(false);
+  const [foveatedRadius, setFoveatedRadius] = useState(300);
   const [rawHeadZ, setRawHeadZ] = useState(0);
 
   // Performance: Use Refs and MotionValues for high-frequency gaze data
@@ -196,6 +198,7 @@ Head Z: ${headZ.toFixed(3)}`;
          gazeY={eyeY}
          depthZ={rawHeadZ}
          enabled={eyeTrackingEnabled && foveatedRenderingEnabled}
+         baseRadius={foveatedRadius}
       />
 
       {eyeTrackingEnabled && (
@@ -243,6 +246,55 @@ Head Z: ${headZ.toFixed(3)}`;
 
 
 
+            {/* Global Cursor Mode Switcher */}
+      <motion.div
+        className="fixed top-4 right-20 z-[100] flex items-center gap-2 bg-black/40 backdrop-blur-md p-1 rounded-full border border-white/10"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <button
+            onClick={() => setCursorMode("hand")}
+
+        >
+            <Hand size={14} /> Hand
+        </button>
+        <button
+            onClick={() => {
+                setCursorMode("eye");
+                if (!eyeTrackingEnabled) {
+                    setEyeTrackingEnabled(true);
+                }
+            }}
+
+        >
+            <Eye size={14} /> Eye
+        </button>
+      </motion.div>
+
+      {/* Calibration Prompt */}
+      <AnimatePresence>
+        {cursorMode === "eye" && !isCalibrationActive && eyeTrackingEnabled && (
+            <motion.div
+                initial={{ opacity: 0, y: 20, x: "-50%" }}
+                animate={{ opacity: 1, y: 0, x: "-50%" }}
+                exit={{ opacity: 0, y: 20, x: "-50%" }}
+                className="fixed bottom-10 left-1/2 z-[200] flex items-center gap-4 bg-red-500/10 border border-red-500/20 backdrop-blur-xl p-4 rounded-2xl shadow-2xl"
+            >
+                <div className="flex flex-col">
+                    <span className="text-white font-medium text-sm">Eye Control Active</span>
+                    <span className="text-white/50 text-xs">For best results, please calibrate.</span>
+                </div>
+                <button
+                    onClick={() => setIsCalibrationActive(true)}
+                    className="px-4 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 transition-colors"
+                >
+                    Calibrate Now
+                </button>
+            </motion.div>
+        )}
+      </AnimatePresence>
+
       <SettingsPanel
         handTrackingEnabled={handTrackingEnabled}
         setHandTrackingEnabled={setHandTrackingEnabled}
@@ -265,8 +317,9 @@ Head Z: ${headZ.toFixed(3)}`;
         setEyeTrackingEnabled={setEyeTrackingEnabled}
         foveatedRenderingEnabled={foveatedRenderingEnabled}
         setFoveatedRenderingEnabled={setFoveatedRenderingEnabled}
-        cursorMode={cursorMode}
-        setCursorMode={setCursorMode}
+        foveatedRadius={foveatedRadius}
+        setFoveatedRadius={setFoveatedRadius}
+
         onCalibrateEye={() => setIsCalibrationActive(true)}
 
         onCopyParams={handleCopyParams}
