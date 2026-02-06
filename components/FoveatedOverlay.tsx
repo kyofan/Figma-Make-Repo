@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { motion } from 'motion/react';
+import { motion, MotionValue, useMotionTemplate, useTransform } from 'motion/react';
 
 interface FoveatedOverlayProps {
-    gazeX: number;
-    gazeY: number;
+    gazeX: MotionValue<number>;
+    gazeY: MotionValue<number>;
     depthZ: number; // Approx -1 (far) to 1 (close)
     enabled: boolean;
 }
@@ -15,20 +15,16 @@ export const FoveatedOverlay: React.FC<FoveatedOverlayProps> = ({
     enabled
 }) => {
     // Calculate radius based on depth
-    // Closer (higher Z) -> Smaller radius
-    // Farther (lower Z) -> Larger radius
     const radius = useMemo(() => {
-        const baseRadius = 200;
-        // depthZ is roughly -1 to 1.
-        // We clamp it to avoid extreme values.
+        const baseRadius = 300; // Increased base radius as requested
         const clampedZ = Math.max(-1.5, Math.min(1.5, depthZ));
-
-        // Formula:
-        // Z=1 (close) -> factor ~0.6 -> radius 120
-        // Z=-1 (far) -> factor ~1.4 -> radius 280
         const scaleFactor = 1 - (clampedZ * 0.4);
         return baseRadius * scaleFactor;
     }, [depthZ]);
+
+    // Use MotionTemplate for performant style updates without React renders
+    // We create the gradient string dynamically based on the MotionValues
+    const maskImage = useMotionTemplate`radial-gradient(circle at ${gazeX}px ${gazeY}px, transparent ${radius}px, black ${radius + 150}px)`;
 
     if (!enabled) return null;
 
@@ -40,11 +36,10 @@ export const FoveatedOverlay: React.FC<FoveatedOverlayProps> = ({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
             style={{
-                // We use a CSS mask to punch a hole in the blurred layer
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                maskImage: `radial-gradient(circle at ${gazeX}px ${gazeY}px, transparent ${radius}px, black ${radius + 100}px)`,
-                WebkitMaskImage: `radial-gradient(circle at ${gazeX}px ${gazeY}px, transparent ${radius}px, black ${radius + 100}px)`,
+                maskImage: maskImage,
+                WebkitMaskImage: maskImage,
                 // Add a subtle vignette to darken the periphery
                 background: 'radial-gradient(circle at 50% 50%, transparent 50%, rgba(0,0,0,0.2) 100%)'
             }}

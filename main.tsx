@@ -46,10 +46,24 @@ export default function SpatialTextInput({
 
   // --- Eye Tracking State ---
   const [eyeTrackingEnabled, setEyeTrackingEnabled] = useState(false);
+  const [foveatedRenderingEnabled, setFoveatedRenderingEnabled] = useState(true);
   const [cursorMode, setCursorMode] = useState<"hand" | "eye">("hand");
   const [isCalibrationActive, setIsCalibrationActive] = useState(false);
-  const [eyeCursorPos, setEyeCursorPos] = useState<{x: number, y: number} | null>(null);
   const [rawHeadZ, setRawHeadZ] = useState(0);
+
+  // Performance: Use Refs and MotionValues for high-frequency gaze data
+  const eyeCursorRef = useRef<{x: number, y: number} | null>(null);
+  const eyeX = useMotionValue(typeof window !== "undefined" ? window.innerWidth / 2 : 0);
+  const eyeY = useMotionValue(typeof window !== "undefined" ? window.innerHeight / 2 : 0);
+
+  const handleGazeMove = useCallback((pos: { x: number; y: number }) => {
+      // Update Ref for HandTrackingManager (logic)
+      eyeCursorRef.current = pos;
+
+      // Update MotionValues for FoveatedOverlay (animation)
+      eyeX.set(pos.x);
+      eyeY.set(pos.y);
+  }, [eyeX, eyeY]);
 
 
   // --- Dev State ---
@@ -168,7 +182,7 @@ Head Z: ${headZ.toFixed(3)}`;
         trackingMode={handTrackingMode}
         sensitivity={handSensitivity}
         showCamera={showHandCamera}
-        overrideCursorPos={cursorMode === "eye" && eyeTrackingEnabled ? eyeCursorPos : null}
+        overrideCursorPosRef={cursorMode === "eye" && eyeTrackingEnabled ? eyeCursorRef : undefined}
       />
       <FaceTrackingManager
         onHeadMove={handleHeadMove}
@@ -177,15 +191,15 @@ Head Z: ${headZ.toFixed(3)}`;
       />
 
       <FoveatedOverlay
-         gazeX={eyeCursorPos?.x ?? 0}
-         gazeY={eyeCursorPos?.y ?? 0}
+         gazeX={eyeX}
+         gazeY={eyeY}
          depthZ={rawHeadZ}
-         enabled={eyeTrackingEnabled}
+         enabled={eyeTrackingEnabled && foveatedRenderingEnabled}
       />
 
       {eyeTrackingEnabled && (
         <EyeTrackingManager
-           onGazeMove={setEyeCursorPos}
+           onGazeMove={handleGazeMove}
            isCalibrationActive={isCalibrationActive}
            onCalibrationComplete={() => setIsCalibrationActive(false)}
         />
@@ -248,6 +262,8 @@ Head Z: ${headZ.toFixed(3)}`;
 
         eyeTrackingEnabled={eyeTrackingEnabled}
         setEyeTrackingEnabled={setEyeTrackingEnabled}
+        foveatedRenderingEnabled={foveatedRenderingEnabled}
+        setFoveatedRenderingEnabled={setFoveatedRenderingEnabled}
         cursorMode={cursorMode}
         setCursorMode={setCursorMode}
         onCalibrateEye={() => setIsCalibrationActive(true)}

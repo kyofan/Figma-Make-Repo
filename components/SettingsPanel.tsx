@@ -28,6 +28,8 @@ interface SettingsPanelProps {
     cursorMode: "hand" | "eye";
     setCursorMode: (v: "hand" | "eye") => void;
     onCalibrateEye: () => void;
+    foveatedRenderingEnabled: boolean;
+    setFoveatedRenderingEnabled: (v: boolean) => void;
 }
 
 type Tab = "hand" | "face" | "eye";
@@ -57,7 +59,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setShowFaceDebug,
     onCopyParams,
     cameraDebugInfo,
-eyeTrackingEnabled, setEyeTrackingEnabled, cursorMode, setCursorMode, onCalibrateEye }) => {
+eyeTrackingEnabled, setEyeTrackingEnabled, cursorMode, setCursorMode, onCalibrateEye , foveatedRenderingEnabled, setFoveatedRenderingEnabled }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>("hand");
 
@@ -142,8 +144,21 @@ eyeTrackingEnabled, setEyeTrackingEnabled, cursorMode, setCursorMode, onCalibrat
                             </div>
                         </div>
 
+                                                {/* Global Settings */}
+                        <div className="px-5 pt-5 pb-2">
+                             <div className="space-y-2">
+                                <Label>Cursor Control Source</Label>
+                                <SegmentedControl
+                                    options={["Hand", "Eye"]}
+                                    value={cursorMode === "hand" ? "Hand" : "Eye"}
+                                    onChange={(v) => setCursorMode(v === "Hand" ? "hand" : "eye")}
+                                />
+                            </div>
+                            <div className="h-px bg-white/10 w-full mt-4" />
+                        </div>
+
                         {/* Content Area */}
-                        <div className="p-5 space-y-5 max-h-[50vh] overflow-y-auto">
+                        <div className="p-5 space-y-5 max-h-[40vh] overflow-y-auto pt-2">
                             <AnimatePresence mode="wait">
                                 {activeTab === "hand" && (
                                     <motion.div
@@ -235,20 +250,10 @@ eyeTrackingEnabled, setEyeTrackingEnabled, cursorMode, setCursorMode, onCalibrat
                                         className="space-y-5"
                                     >
                                         <ControlRow label="Enable Eye Tracking" value={eyeTrackingEnabled} onChange={setEyeTrackingEnabled} />
+                                        <ControlRow label="Foveated Rendering" value={foveatedRenderingEnabled} onChange={setFoveatedRenderingEnabled} />
+                                        <p className="text-xs text-white/40 font-light -mt-3">Blurs peripheral vision.</p>
 
-                                        <div className="space-y-2">
-                                            <Label>Cursor Control Mode</Label>
-                                            <SegmentedControl
-                                                options={["Hand", "Eye"]}
-                                                value={cursorMode === "hand" ? "Hand" : "Eye"}
-                                                onChange={(v) => setCursorMode(v === "Hand" ? "hand" : "eye")}
-                                            />
-                                            <p className="text-xs text-white/40 font-light">
-                                                {cursorMode === "hand"
-                                                    ? "Hand moves cursor. Pinch to click."
-                                                    : "Eye moves cursor. Pinch to click."}
-                                            </p>
-                                        </div>
+
 
                                         <div className="h-px bg-white/10 w-full" />
 

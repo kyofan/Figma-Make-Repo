@@ -13,8 +13,8 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
     onCalibrationComplete
 }) => {
     const [scriptLoaded, setScriptLoaded] = useState(false);
-    const [calibrationPoints, setCalibrationPoints] = useState<number[]>(new Array(9).fill(0)); // 0-5 clicks per point
-    const activePointIndexRef = useRef(0);
+    const [isWebGazerReady, setIsWebGazerReady] = useState(false);
+    const [calibrationPoints, setCalibrationPoints] = useState<number[]>(new Array(9).fill(0));
     const [activePointIndex, setActivePointIndex] = useState(0);
 
     // Load WebGazer
@@ -39,15 +39,16 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
 
         const initWebGazer = async () => {
             try {
-                // Clear any previous data
+                // Clear any previous data to ensure fresh start
                 await window.webgazer.clearData();
 
                 await window.webgazer.setRegression('ridge')
-                    .setTracker('TFFacemesh') // More robust than clmtrackr
+                    .setTracker('TFFacemesh')
                     .begin();
 
-                window.webgazer.showVideoPreview(true)
-                    .showPredictionPoints(true) // Show for debug/calibration, maybe hide later
+                // IMPORTANT: Hide the video feed to prevent duplicate/ugly UI
+                window.webgazer.showVideoPreview(false)
+                    .showPredictionPoints(true)
                     .applyKalmanFilter(true);
 
                 // Setup listener
@@ -58,6 +59,7 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
                 });
 
                 console.log("WebGazer initialized");
+                setIsWebGazerReady(true);
             } catch (e) {
                 console.error("WebGazer failed to init:", e);
             }
@@ -67,16 +69,26 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
 
         return () => {
             if (window.webgazer) {
-                // We might not want to end it if we just unmount temporarily, but usually we do.
-                // For now let's keep it running or end it.
-                // webgazer.end() stops the loop.
                 window.webgazer.end();
             }
         };
     }, [scriptLoaded]);
 
     // Calibration Logic
+    useEffect(() => {
+        if (isCalibrationActive) {
+            // Reset calibration state when activation happens
+            setCalibrationPoints(new Array(9).fill(0));
+            setActivePointIndex(0);
+            if (window.webgazer) {
+                window.webgazer.showPredictionPoints(true);
+            }
+        }
+    }, [isCalibrationActive]);
+
     const handlePointClick = (index: number) => {
+        if (!isWebGazerReady) return;
+
         const newPoints = [...calibrationPoints];
         newPoints[index] += 1;
         setCalibrationPoints(newPoints);
@@ -87,13 +99,13 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
                 setActivePointIndex(index + 1);
             } else {
                 // Done
-                window.webgazer.showPredictionPoints(false); // Hide debug points after calibration
+                window.webgazer.showPredictionPoints(false);
                 onCalibrationComplete();
             }
         }
     };
 
-    // Calibration Grid Positions (Top-Left, Top-Center, ..., Bottom-Right)
+    // Calibration Grid Positions
     const getPosition = (index: number) => {
         const row = Math.floor(index / 3);
         const col = index % 3;
@@ -113,33 +125,43 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
-                        <div className="absolute top-10 text-white text-xl font-light text-center w-full">
-                            Click each red dot 5 times while looking at it.
-                            <br/>
-                            <span className="text-sm opacity-50">Head steady, eyes moving.</span>
-                        </div>
+                        {!isWebGazerReady && (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white">
+                                Initializing Eye Tracking...
+                            </div>
+                        )}
 
-                        {calibrationPoints.map((clicks, index) => {
-                            const isCurrent = index === activePointIndex;
-                            const isDone = clicks >= 5;
+                        {isWebGazerReady && (
+                            <>
+                                <div className="absolute top-10 text-white text-xl font-light text-center w-full">
+                                    Click each red dot 5 times while looking at it.
+                                    <br/>
+                                    <span className="text-sm opacity-50">Head steady, eyes moving.</span>
+                                </div>
 
-                            return (
-                                <motion.button
-                                    key={index}
-                                    className={`absolute w-8 h-8 rounded-full border-2
-                                        ${isDone ? 'bg-green-500 border-green-300 opacity-50' :
-                                          isCurrent ? 'bg-red-500 border-red-300 cursor-pointer animate-pulse' :
-                                          'bg-gray-500 border-gray-400 opacity-30 cursor-not-allowed'}`}
-                                    style={getPosition(index)}
-                                    onClick={() => isCurrent && handlePointClick(index)}
-                                    disabled={!isCurrent && !isDone}
-                                    whileHover={isCurrent ? { scale: 1.2 } : {}}
-                                    whileTap={isCurrent ? { scale: 0.9 } : {}}
-                                >
-                                    {isCurrent && <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-white text-xs">{5 - clicks}</span>}
-                                </motion.button>
-                            );
-                        })}
+                                {calibrationPoints.map((clicks, index) => {
+                                    const isCurrent = index === activePointIndex;
+                                    const isDone = clicks >= 5;
+
+                                    return (
+                                        <motion.button
+                                            key={index}
+                                            className={`absolute w-8 h-8 rounded-full border-2
+                                                ${isDone ? 'bg-green-500 border-green-300 opacity-50' :
+                                                  isCurrent ? 'bg-red-500 border-red-300 cursor-pointer animate-pulse' :
+                                                  'bg-gray-500 border-gray-400 opacity-30 cursor-not-allowed'}`}
+                                            style={getPosition(index)}
+                                            onClick={() => isCurrent && handlePointClick(index)}
+                                            disabled={!isCurrent && !isDone}
+                                            whileHover={isCurrent ? { scale: 1.2 } : {}}
+                                            whileTap={isCurrent ? { scale: 0.9 } : {}}
+                                        >
+                                            {isCurrent && <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-white text-xs">{5 - clicks}</span>}
+                                        </motion.button>
+                                    );
+                                })}
+                            </>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
