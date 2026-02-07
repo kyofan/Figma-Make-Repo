@@ -33,10 +33,12 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   // Smooth the raw input
   const smoothX = useSpring(headX, { stiffness: 100, damping: 20 });
   const smoothY = useSpring(headY, { stiffness: 100, damping: 20 });
+  const smoothZ = useSpring(headZ || 0, { stiffness: 100, damping: 20 });
 
   // Use smoothed or raw based on setting
   const effectiveX = smoothingEnabled ? smoothX : headX;
   const effectiveY = smoothingEnabled ? smoothY : headY;
+  const effectiveZ = smoothingEnabled ? smoothZ : headZ;
 
   // Transform to pixel offset
   const parallaxX = useTransform(effectiveX, (value) => value * parallaxIntensity);
@@ -93,8 +95,7 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
           className="w-full h-full"
           headX={effectiveX}
           headY={effectiveY}
-          headZ={headZ}
-          smoothingEnabled={smoothingEnabled}
+          headZ={effectiveZ}
           onCameraUpdate={onCameraUpdate}
         />
       </div>
