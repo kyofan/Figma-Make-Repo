@@ -122,7 +122,7 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
 
             // Calculate target camera position
             const targetX = baseCameraRef.current.x + hx * xyResponse;
-            const targetY = baseCameraRef.current.y + hy * xyResponse; // Fixed: Sign flipped physically match head movement
+            const targetY = baseCameraRef.current.y - hy * xyResponse; // Fixed: Sign flipped physically match head movement
 
             // Absolute Z calibration: Force 0.05 when HeadZ is -0.366
             // Ignore baseCameraRef.z because viewer seems to overwrite it
