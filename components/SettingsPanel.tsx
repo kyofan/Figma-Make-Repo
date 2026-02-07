@@ -23,6 +23,13 @@ interface SettingsPanelProps {
 
     onCopyParams: () => void;
     cameraDebugInfo: string;
+    eyeTrackingEnabled: boolean;
+    setEyeTrackingEnabled: (v: boolean) => void;
+    onCalibrateEye: () => void;
+    foveatedRenderingEnabled: boolean;
+    setFoveatedRenderingEnabled: (v: boolean) => void;
+    foveatedRadius: number;
+    setFoveatedRadius: (v: number) => void;
 }
 
 type Tab = "hand" | "face" | "eye";
@@ -52,7 +59,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setShowFaceDebug,
     onCopyParams,
     cameraDebugInfo,
-}) => {
+eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEnabled, setFoveatedRenderingEnabled , foveatedRadius, setFoveatedRadius }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>("hand");
 
@@ -137,8 +144,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                             </div>
                         </div>
 
+                                                {/* Global Settings */}
+
+
                         {/* Content Area */}
-                        <div className="p-5 space-y-5 max-h-[50vh] overflow-y-auto">
+                        <div className="p-5 space-y-5 max-h-[40vh] overflow-y-auto pt-2">
                             <AnimatePresence mode="wait">
                                 {activeTab === "hand" && (
                                     <motion.div
@@ -227,14 +237,43 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: 10 }}
                                         transition={{ duration: 0.15 }}
-                                        className="space-y-4 text-center py-6"
+                                        className="space-y-5"
                                     >
-                                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto border border-white/10">
-                                            <Eye size={24} className="text-white/40" />
+                                        <ControlRow label="Enable Tracking" value={eyeTrackingEnabled} onChange={setEyeTrackingEnabled} />
+                                        <ControlRow label="Foveated Rendering" value={foveatedRenderingEnabled} onChange={setFoveatedRenderingEnabled} />
+                                        <p className="text-xs text-white/40 font-light -mt-3">Blurs peripheral vision.</p>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <Label>Foveal Diameter</Label>
+                                                <span className="text-xs text-white/50 font-mono">{Math.round(foveatedRadius)}px</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="150"
+                                                max="600"
+                                                step="10"
+                                                value={foveatedRadius}
+                                                onChange={(e) => setFoveatedRadius(Number(e.target.value))}
+                                                className="w-full accent-white/80 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                                                disabled={!foveatedRenderingEnabled}
+                                            />
                                         </div>
-                                        <div>
-                                            <h3 className="text-base font-light text-white/90 mb-1">Eye Tracking</h3>
-                                            <p className="text-xs text-white/50 leading-relaxed">Coming soon.</p>
+
+
+
+                                        <div className="h-px bg-white/10 w-full" />
+
+                                        <div className="space-y-2">
+                                            <Label>Calibration</Label>
+                                            <button
+                                                onClick={onCalibrateEye}
+                                                className="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white/90 text-sm font-medium transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Eye size={14} /> Start Calibration
+                                            </button>
+                                            <p className="text-xs text-white/40 font-light">
+                                                Required for accurate eye tracking.
+                                            </p>
                                         </div>
                                     </motion.div>
                                 )}

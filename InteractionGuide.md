@@ -531,3 +531,36 @@ Planned improvements to the system:
 ---
 
 *For technical implementation details, see the source code in `components/HandTrackingManager.tsx` and `components/TextEditor.tsx`.*
+
+---
+
+## Eye Tracking Integration
+
+The system now supports **Eye Tracking** as an alternative cursor control method, offering a magical interaction model similar to VisionOS.
+
+### Features
+
+1.  **Foveated Rendering**: The area you are looking at remains clear, while the periphery is blurred. This effect dynamically adjusts based on your distance from the camera (Z-axis).
+2.  **Gaze-Based Cursor**: Your eyes control the cursor position.
+3.  **Multimodal Interaction**: While your eyes aim, you use the **Hand Pinch** gesture to click or hold-to-speak. This separation of "look" and "commit" prevents the "Midas Touch" problem.
+
+### Setup & Usage
+
+1.  Open the **Settings Panel** (gear icon).
+2.  Navigate to the **Eye** tab.
+3.  **Enable Eye Tracking**: Toggle the switch. You may see a permission prompt for the camera if not already granted.
+4.  **Calibrate**: Click "Start Calibration".
+    - 9 red dots will appear.
+    - Click each dot 5 times while looking directly at it.
+    - Keep your head relatively steady but move your eyes.
+    - This creates a custom regression model for your face and environment.
+5.  **Select Cursor Mode**: Switch "Cursor Control Mode" from **Hand** to **Eye**.
+    *   **Hand Mode**: Hand moves cursor. Eye tracking only provides the foveated rendering visual (if enabled).
+    *   **Eye Mode**: Eyes move cursor. Hand pinch performs clicks at the gaze location.
+
+### Best Practices
+
+*   **Lighting**: Ensure your face is well-lit from the front. Avoid strong backlighting or shadows on your face.
+*   **Distance**: Sit at a normal working distance (roughly 50-80cm).
+*   **Stability**: Keep your head relatively steady.
+*   **Calibration**: If accuracy drifts or you change your sitting position significantly, recalibrate.
