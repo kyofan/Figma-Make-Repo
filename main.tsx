@@ -369,7 +369,7 @@ Head Z: ${headZ.toFixed(3)}`;
         transition={{ delay: 1 }}
       >
         <div className="flex flex-col items-end">
-          <span className="text-[1rem] whitespace-nowrap">Prototype for Spatial Computing • v2.6.1</span>
+          <span className="text-[1rem] whitespace-nowrap">Prototype for Spatial Computing • v2.7.0</span>
         </div>
         <div className="h-8 w-px bg-white/10 mx-1" />
         <img
