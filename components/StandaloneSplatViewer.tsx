@@ -8,7 +8,6 @@ interface StandaloneSplatViewerProps {
     headX?: MotionValue<number>;
     headY?: MotionValue<number>;
     headZ?: MotionValue<number>;
-    smoothingEnabled?: boolean;
     onCameraUpdate?: (cam: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }) => void;
 }
 
@@ -24,7 +23,6 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
     headX,
     headY,
     headZ,
-    smoothingEnabled = false,
     onCameraUpdate,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -32,9 +30,6 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
     // User-verified camera defaults for head tracking base position
     const baseCameraRef = useRef({ x: 0.72, y: 0.31, z: 0.05 });
     const baseTargetRef = useRef({ x: 1.61, y: 1.02, z: -2.87 });
-
-    // Debug state for current Z tracking value
-    const [currentHeadZ, setCurrentHeadZ] = React.useState(0);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -127,7 +122,7 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
 
             // Calculate target camera position
             const targetX = baseCameraRef.current.x + hx * xyResponse;
-            const targetY = baseCameraRef.current.y + hy * xyResponse; // Fixed: Sign flipped physically match head movement
+            const targetY = baseCameraRef.current.y - hy * xyResponse; // Fixed: Sign flipped physically match head movement
 
             // Absolute Z calibration: Force 0.05 when HeadZ is -0.366
             // Ignore baseCameraRef.z because viewer seems to overwrite it
@@ -138,23 +133,11 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
             // Apply scale (negative because closer head (positive diff) means closer camera (negative Z change))
             const targetZ = CALIBRATED_CAM_Z - headZDiff * DEPTH_SCALE;
 
-            // SMART SMOOTHING (Adaptive Lerp)
-            // Calculate distance between current camera and target
-            const dx = targetX - viewer.camera.position.x;
-            const dy = targetY - viewer.camera.position.y;
-            const dz = targetZ - viewer.camera.position.z;
-            const distSq = dx * dx + dy * dy + dz * dz;
-
-            // If movement is large, be fast (0.6). If small (jitter), be smooth (0.1).
-            // Thresholds: jitter usually < 0.0001 distance. Head move > 0.01.
-            // Interpolate lerp factor based on distance
-            const lerpFactor = Math.min(0.6, Math.max(0.1, distSq * 50.0));
-
-            // Smooth interpolation - higher lerp = lower latency
-            viewer.camera.position.x += (targetX - viewer.camera.position.x) * lerpFactor;
-            viewer.camera.position.y += (targetY - viewer.camera.position.y) * lerpFactor;
-            // Z-axis uses slightly higher lerp (max 1.0) for instant depth
-            viewer.camera.position.z += (targetZ - viewer.camera.position.z) * Math.min(1.0, lerpFactor * 1.5);
+            // DIRECT UPDATE - No internal smoothing
+            // We rely on the BackgroundManager to pass in smoothed MotionValues
+            viewer.camera.position.x = targetX;
+            viewer.camera.position.y = targetY;
+            viewer.camera.position.z = targetZ;
 
             // KEY DIFFERENCE: Target stays FIXED at base position
             // This is what creates the parallax "window" effect
@@ -170,10 +153,6 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
                 );
             }
 
-            // Update debug Z state (throttled visually, but here we just set it)
-            // In a real app we'd throttle this, but for debug it's fine
-            setCurrentHeadZ(hz);
-
             animationId = requestAnimationFrame(updateCamera);
         };
 
@@ -182,9 +161,7 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
         return () => {
             if (animationId) cancelAnimationFrame(animationId);
         };
-    }, [headX, headY, onCameraUpdate, currentHeadZ]);
-
-
+    }, [headX, headY, onCameraUpdate]);
 
     return (
         <div ref={containerRef} className={`relative ${className}`} style={{ width: '100%', height: '100%' }}>
