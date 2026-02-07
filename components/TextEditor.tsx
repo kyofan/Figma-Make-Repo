@@ -2,6 +2,53 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { SpeechStatus } from "./VoiceVisualizer";
 
+// Extracted Word Component
+interface WordProps {
+  word: string;
+  index: number;
+  isActive: boolean;
+  isListening: boolean;
+  
+  onMouseEnter: (index: number) => void;
+  onMouseLeave: (index: number) => void;
+  onClick: (index: number) => void;
+}
+
+const Word = React.memo(({
+  word,
+  index,
+  isActive,
+  isListening,
+  
+  onMouseEnter,
+  onMouseLeave,
+  onClick
+}: WordProps) => {
+  // We need to wrap these handlers to pass the index
+  // However, passing a new function every render defeats React.memo if the parent passes a new function
+  // BUT, here we are inside Word. The parent passes a stable 'onMouseEnter'.
+  // We can just call it.
+  
+  return (
+    <span
+      className={`word-span relative ${word.trim() === "" ? "whitespace-pre" : "inline-block py-1.5 rounded-md cursor-pointer transition-all duration-150"} ${isActive && word.trim() !== "" ? "text-blue-400 font-normal bg-blue-500/10 scale-105" : word.trim() !== "" ? "hover:bg-white/5" : ""}`}
+      onMouseEnter={() => onMouseEnter(index)}
+      onMouseLeave={() => onMouseLeave(index)}
+      onClick={() => onClick(index)}
+    >
+      {word}
+      {isActive && word.trim() !== "" && (
+        <motion.div
+          className="absolute bottom-0 left-0 w-full h-1 bg-blue-400/70 shadow-[0_0_8px_rgba(59,130,246,0.6)] rounded-full"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.2 }}
+        />
+      )}
+    </span>
+  );
+});
+
 interface TextEditorProps {
   initialText: string;
   onListeningChange?: (isListening: boolean, speechData?: SpeechStatus) => void;
@@ -12,7 +59,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   onListeningChange,
 }) => {
   const [text, setText] = useState(initialText);
-  const [words, setWords] = useState<string[]>([]);
+  const words = React.useMemo(() => text.match(/\S+|\s+/g) || [], [text]);
   const [focusedWordIndex, setFocusedWordIndex] = useState<number | null>(null);
   const [lockedWordIndex, setLockedWordIndex] = useState<number | null>(null);
   const [isListening, setIsListening] = useState(false);
@@ -193,7 +240,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   // Update activeWordIndexRef whenever focusedWordIndex or lockedWordIndex changes
   useEffect(() => {
     updateActiveWordRef();
-  }, [focusedWordIndex, lockedWordIndex, updateActiveWordRef]);
+  }, [focusedWordIndex,  updateActiveWordRef]);
 
   // Split text into words when text changes
   useEffect(() => {
@@ -276,7 +323,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     } else {
       setSpacebarHintVisible(false);
     }
-  }, [focusedWordIndex, lockedWordIndex, isListening]);
+  }, [focusedWordIndex,  isListening]);
 
   // Function to show temporary feedback toast
   const showTemporaryFeedback = useCallback((message: string) => {
@@ -659,6 +706,69 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     showTemporaryFeedback("Text appended");
   };
 
+  // Stable handlers for Word component to prevent re-renders
+  const handleWordMouseEnter = useCallback((index: number) => {
+    if (
+      !wordsRef.current[index] ||
+      wordsRef.current[index].trim() === "" ||
+      lockedWordIndex !== null ||
+      isListeningRef.current
+    )
+      return;
+    // console.log(`Focusing word ${index}: "${wordsRef.current[index].trim()}"`); // Removed for performance
+    setFocusedWordIndex(index);
+  }, [lockedWordIndex]); // removed isListening dependency, using ref
+
+  const handleWordMouseLeave = useCallback((index: number) => {
+    if (
+        !wordsRef.current[index] ||
+        wordsRef.current[index].trim() === "" ||
+        lockedWordIndex !== null ||
+        isListeningRef.current
+    )
+      return;
+    // console.log(`Unfocusing word ${index}`); // Removed for performance
+    setFocusedWordIndex(null);
+  }, [lockedWordIndex]); // removed isListening dependency, using ref
+
+  const handleWordClick = useCallback((index: number) => {
+    if (!wordsRef.current[index] || wordsRef.current[index].trim() === "" || isListeningRef.current) return;
+    
+    const wordToRemove = wordsRef.current[index];
+    console.log(`Deleting word ${index}: "${wordToRemove.trim()}"`);
+    
+    // Delete the word
+    const newWords = [...wordsRef.current];
+    newWords[index] = ""; // Remove the word
+    
+    // Clean up and rebuild text
+    const cleanedWords = newWords.filter((w, i) => {
+      // Keep word if not empty, or if it's a space between two non-empty words
+      if (w.trim() !== "") return true;
+      if (w === "") return false;
+      // Check if space is needed
+      const prevNonEmpty = newWords.slice(0, i).some(w => w.trim() !== "");
+      const nextNonEmpty = newWords.slice(i + 1).some(w => w.trim() !== "");
+      return prevNonEmpty && nextNonEmpty;
+    });
+    
+    const newText = cleanedWords.join("").replace(/\s+/g, " ").trim();
+    setText(newText);
+    
+    // Add to history
+    // Note: accessing editHistoryRef.current to be safe, though closure might be stale if we didn't use refs
+    const currentHistory = editHistoryRef.current;
+    const currentHistoryIndex = historyIndexRef.current;
+    
+    const newHistory = [...currentHistory.slice(0, currentHistoryIndex + 1), newText];
+    setEditHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    
+    setFocusedWordIndex(null);
+    setLockedWordIndex(null);
+    showTemporaryFeedback(`Deleted "${wordToRemove.trim()}"`);
+  }, []); // Empty dependency array thanks to refs!
+
   return (
     <div className="relative w-full h-full flex flex-col items-center">
       <div
@@ -670,66 +780,16 @@ export const TextEditor: React.FC<TextEditorProps> = ({
             const isActive =
               index === focusedWordIndex || index === lockedWordIndex;
             return (
-              <span
+              <Word 
                 key={index}
-                className={`word-span relative ${word.trim() === "" ? "whitespace-pre" : "inline-block py-1.5 rounded-md cursor-pointer transition-all duration-150"} ${isActive && word.trim() !== "" ? "text-blue-400 font-normal bg-blue-500/10 scale-105" : word.trim() !== "" ? "hover:bg-white/5" : ""}`}
-                onMouseEnter={() => {
-                  if (
-                    word.trim() === "" ||
-                    lockedWordIndex !== null ||
-                    isListening
-                  )
-                    return;
-                  console.log(`Focusing word ${index}: "${word.trim()}"`);
-                  setFocusedWordIndex(index);
-                }}
-                onMouseLeave={() => {
-                  if (
-                    word.trim() === "" ||
-                    lockedWordIndex !== null ||
-                    isListening
-                  )
-                    return;
-                  console.log(`Unfocusing word ${index}`);
-                  setFocusedWordIndex(null);
-                }}
-                onClick={() => {
-                  if (word.trim() === "" || isListening) return;
-                  console.log(`Deleting word ${index}: "${word.trim()}"`);
-                  // Delete the word
-                  const newWords = [...words];
-                  newWords[index] = ""; // Remove the word
-                  // Clean up and rebuild text
-                  const cleanedWords = newWords.filter((w, i) => {
-                    // Keep word if not empty, or if it's a space between two non-empty words
-                    if (w.trim() !== "") return true;
-                    if (w === "") return false;
-                    // Check if space is needed
-                    const prevNonEmpty = newWords.slice(0, i).some(w => w.trim() !== "");
-                    const nextNonEmpty = newWords.slice(i + 1).some(w => w.trim() !== "");
-                    return prevNonEmpty && nextNonEmpty;
-                  });
-                  const newText = cleanedWords.join("").replace(/\s+/g, " ").trim();
-                  setText(newText);
-                  // Add to history
-                  const newHistory = [...editHistory.slice(0, historyIndex + 1), newText];
-                  setEditHistory(newHistory);
-                  setHistoryIndex(newHistory.length - 1);
-                  setFocusedWordIndex(null);
-                  setLockedWordIndex(null);
-                  showTemporaryFeedback(`Deleted "${word.trim()}"`);
-                }}
-              >
-                {word}
-                {isActive && word.trim() !== "" && (
-                  <motion.div
-                    className="absolute bottom-0 left-0 w-full h-1 bg-blue-400/70 shadow-[0_0_8px_rgba(59,130,246,0.6)] rounded-full"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                )}
-              </span>
+                word={word}
+                index={index}
+                isActive={isActive}
+                isListening={isListening}
+                onMouseEnter={handleWordMouseEnter}
+                onMouseLeave={handleWordMouseLeave}
+                onClick={handleWordClick}
+              />
             );
           })}
         </div>
