@@ -20,6 +20,8 @@ interface SettingsPanelProps {
     setHeadTrackingSmoothing: (v: boolean) => void;
     showFaceDebug: boolean;
     setShowFaceDebug: (v: boolean) => void;
+    debugCameraControls: boolean;
+    setDebugCameraControls: (v: boolean) => void;
 
     onCopyParams: () => void;
     cameraDebugInfo: string;
@@ -57,6 +59,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setHeadTrackingSmoothing,
     showFaceDebug,
     setShowFaceDebug,
+    debugCameraControls,
+    setDebugCameraControls,
     onCopyParams,
     cameraDebugInfo,
 eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEnabled, setFoveatedRenderingEnabled , foveatedRadius, setFoveatedRadius }) => {
@@ -209,6 +213,7 @@ eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEna
                                         </p>
                                         <div className="h-px bg-white/10 w-full" />
                                         <ControlRow label="Show Debug View" value={showFaceDebug} onChange={setShowFaceDebug} />
+                                        <ControlRow label="Debug Camera Controls" value={debugCameraControls} onChange={setDebugCameraControls} />
                                         <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                                             <p className="text-xs text-white/60 leading-relaxed">Face tracking enables the parallax effect.</p>
                                         </div>
