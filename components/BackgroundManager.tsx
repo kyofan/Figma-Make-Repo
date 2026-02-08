@@ -17,6 +17,7 @@ interface BackgroundManagerProps {
   parallaxIntensity?: number;
   renderMode?: "gltf" | "splat";
   onCameraUpdate?: (cam: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }) => void;
+  debugCameraControls?: boolean;
 }
 
 export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
@@ -28,6 +29,7 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   parallaxIntensity = 50,
   renderMode = "gltf",
   onCameraUpdate,
+  debugCameraControls = false,
 }) => {
   console.log("BackgroundManager rendering type:", type);
   // Smooth the raw input
@@ -96,6 +98,7 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
           headZ={headZ}
           smoothingEnabled={smoothingEnabled}
           onCameraUpdate={onCameraUpdate}
+          debugCameraControls={debugCameraControls}
         />
       </div>
     );
