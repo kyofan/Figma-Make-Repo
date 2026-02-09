@@ -366,7 +366,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                                 console.log(`Hold detected - over text container: ${isOverTextContainer}, element:`, targetElement?.className);
 
                                 if (isOverTextContainer) {
-                                    console.log("Hand Tracking: Spacebar Down (Hold Detected)");
+                                    // console.log("Hand Tracking: Spacebar Down (Hold Detected)");
                                     window.dispatchEvent(new KeyboardEvent("keydown", {
                                         code: "Space",
                                         key: " ",
@@ -375,7 +375,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                                     }));
                                     pinchStateRef.current.isHolding = true;
                                 } else {
-                                    console.log("Hand Tracking: Hold detected but not over text area - ignoring");
+                                    // console.log("Hand Tracking: Hold detected but not over text area - ignoring");
                                 }
                             }
                         }
@@ -396,7 +396,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                             }
 
                             if (isHolding) {
-                                console.log("Hand Tracking: Spacebar Up (Hold Released)");
+                                // console.log("Hand Tracking: Spacebar Up (Hold Released)");
                                 window.dispatchEvent(new KeyboardEvent("keyup", {
                                     code: "Space",
                                     key: " ",
@@ -437,10 +437,38 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     }
                 }
             } else {
-                // Hand lost or wrong hand
+                // Hand lost or wrong hand (Target not found)
+                if (pinchStateRef.current.isHolding) {
+                    // console.log("Hand Tracking: Target hand lost while holding - releasing Space");
+                    window.dispatchEvent(new KeyboardEvent("keyup", {
+                        code: "Space",
+                        key: " ",
+                        bubbles: true
+                    }));
+                    pinchStateRef.current.isHolding = false;
+                    pinchStateRef.current.isPinching = false;
+                    pinchStateRef.current.justReleasedHold = true;
+                    setTimeout(() => { pinchStateRef.current.justReleasedHold = false; }, 300);
+                }
                 wasTrackingRef.current = false;
                 handStartPosRef.current = null;
             }
+        } else {
+            // No landmarks detected
+            if (pinchStateRef.current.isHolding) {
+                // console.log("Hand Tracking: No hands detected while holding - releasing Space");
+                window.dispatchEvent(new KeyboardEvent("keyup", {
+                    code: "Space",
+                    key: " ",
+                    bubbles: true
+                }));
+                pinchStateRef.current.isHolding = false;
+                pinchStateRef.current.isPinching = false;
+                pinchStateRef.current.justReleasedHold = true;
+                setTimeout(() => { pinchStateRef.current.justReleasedHold = false; }, 300);
+            }
+            wasTrackingRef.current = false;
+            handStartPosRef.current = null;
         }
 
         canvasCtx.restore();

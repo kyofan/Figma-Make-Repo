@@ -7,3 +7,6 @@
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
+11:44:22 PM [vite] hmr update /components/HandTrackingManager.tsx, /index.css
+11:54:21 PM [vite] hmr update /components/TextEditor.tsx, /index.css
+11:55:58 PM [vite] hmr update /components/HandTrackingManager.tsx, /index.css

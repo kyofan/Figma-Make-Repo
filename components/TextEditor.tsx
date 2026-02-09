@@ -607,6 +607,10 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     setEditHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
 
+    // Reset selection state
+    setFocusedWordIndex(null);
+    setLockedWordIndex(null);
+
     showTemporaryFeedback("Semantic edit applied");
   };
 
@@ -696,6 +700,10 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     const newHistory = [...currentHistory.slice(0, currentHistoryIndex + 1), newText];
     setEditHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
+
+    // Reset selection state
+    setFocusedWordIndex(null);
+    setLockedWordIndex(null);
 
     showTemporaryFeedback("Text appended");
   };
