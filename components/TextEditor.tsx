@@ -125,7 +125,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       (window as any).SpeechRecognition;
     if (SpeechRecognition) {
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
+      recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = "en-US";
 
@@ -149,24 +149,32 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       };
 
       recognitionRef.current.onresult = (event: any) => {
-        const current = event.resultIndex;
-        const transcriptText = event.results[current][0].transcript;
-        console.log(`Recognized: "${transcriptText}"`);
+        let finalTranscript = "";
+        let interimTranscript = "";
 
-        // Update the transcript ref without triggering re-renders
-        realTimeSpeechTextRef.current = transcriptText;
+        for (let i = 0; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        const fullTranscript = finalTranscript + interimTranscript;
+        console.log(`Recognized: "${fullTranscript}"`);
+
+        // Update the transcript ref
+        realTimeSpeechTextRef.current = fullTranscript;
+
+        // Update state to show feedback immediately
+        setTranscript(fullTranscript);
 
         // Notify parent component for visualization
         if (onListeningChange) {
           onListeningChange(true, {
-            text: transcriptText,
+            text: fullTranscript,
             status: "processing",
           });
-        }
-
-        // If this is a final result, store it in state
-        if (event.results[current].isFinal) {
-          setTranscript(transcriptText);
         }
       };
 

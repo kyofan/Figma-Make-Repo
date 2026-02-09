@@ -463,41 +463,54 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
         // Only trigger loss logic if we are holding or need to reset state
         // And use debounce to prevent flickering
 
-        if (pinchStateRef.current.isHolding) {
-             if (!trackingLossTimeoutRef.current) {
-                trackingLossTimeoutRef.current = setTimeout(() => {
-                     console.log("Hand Tracking: Lost confirmed after timeout");
+        if (!trackingLossTimeoutRef.current) {
+            trackingLossTimeoutRef.current = setTimeout(() => {
+                console.log("Hand Tracking: Lost confirmed after timeout");
 
-                     // 1. Notify TextEditor specifically about the loss
-                     window.dispatchEvent(new CustomEvent("hand-tracking-lost"));
+                // 1. Notify TextEditor specifically about the loss
+                window.dispatchEvent(new CustomEvent("hand-tracking-lost"));
 
-                     // 2. Fallback: Dispatch Space keyup to ensure other listeners clear state
-                     // Small delay to let custom event handlers run first if needed
-                     setTimeout(() => {
-                        window.dispatchEvent(new KeyboardEvent("keyup", {
-                            code: "Space",
-                            key: " ",
-                            bubbles: true
-                        }));
-                     }, 10);
+                // If holding, release the hold properly
+                if (pinchStateRef.current.isHolding) {
+                    // 2. Fallback: Dispatch Space keyup to ensure other listeners clear state
+                    // Small delay to let custom event handlers run first if needed
+                    setTimeout(() => {
+                    window.dispatchEvent(new KeyboardEvent("keyup", {
+                        code: "Space",
+                        key: " ",
+                        bubbles: true
+                    }));
+                    }, 10);
 
-                     pinchStateRef.current.isHolding = false;
-                     pinchStateRef.current.isPinching = false;
-                     pinchStateRef.current.justReleasedHold = true;
-                     setTimeout(() => { pinchStateRef.current.justReleasedHold = false; }, 300);
+                    pinchStateRef.current.isHolding = false;
+                    pinchStateRef.current.isPinching = false;
+                    pinchStateRef.current.justReleasedHold = true;
+                    setTimeout(() => { pinchStateRef.current.justReleasedHold = false; }, 300);
+                }
 
-                     wasTrackingRef.current = false;
-                     handStartPosRef.current = null;
-                     trackingLossTimeoutRef.current = null;
-                }, trackingLossThreshold);
-             }
-        } else {
-             // If not holding, we can reset immediately or also wait?
-             // Usually safe to just reset immediately if not critical interaction
-             // But for smoothness, maybe we keep cursor for a bit?
-             // For now, let's just reset tracking state to stop cursor movement
-             wasTrackingRef.current = false;
-             handStartPosRef.current = null;
+                // Clear hover state on last element if any
+                if (lastHoveredElement.current) {
+                    lastHoveredElement.current.dispatchEvent(new MouseEvent("mouseout", {
+                        bubbles: true,
+                        view: window,
+                        clientX: cursorRef.current.x,
+                        clientY: cursorRef.current.y
+                    }));
+                    lastHoveredElement.current.dispatchEvent(new MouseEvent("mouseleave", {
+                        bubbles: false,
+                        view: window,
+                        clientX: cursorRef.current.x,
+                        clientY: cursorRef.current.y
+                    }));
+                    lastHoveredElement.current = null;
+                }
+
+                // Reset tracking state
+                wasTrackingRef.current = false;
+                handStartPosRef.current = null;
+                setCursorPosition(null); // Hide cursor
+                trackingLossTimeoutRef.current = null;
+            }, trackingLossThreshold);
         }
     };
 
