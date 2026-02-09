@@ -249,7 +249,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   // Update activeWordIndexRef whenever focusedWordIndex or lockedWordIndex changes
   useEffect(() => {
     updateActiveWordRef();
-  }, [focusedWordIndex,  updateActiveWordRef]);
+  }, [focusedWordIndex, updateActiveWordRef]);
 
 
   // Handle spacebar press/release for voice input (hold to listen, release to apply)
@@ -283,24 +283,24 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
     // Custom event handler for hand tracking loss
     const handleHandLost = () => {
-        // Clear focus and lock immediately when hand is lost
-        if (focusedWordIndex !== null || lockedWordIndex !== null) {
-          console.log("TextEditor: Hand tracking lost - clearing focus/lock");
-          setFocusedWordIndex(null);
-          setLockedWordIndex(null);
-        }
+      // Clear focus and lock immediately when hand is lost
+      if (focusedWordIndex !== null || lockedWordIndex !== null) {
+        console.log("TextEditor: Hand tracking lost - clearing focus/lock");
+        setFocusedWordIndex(null);
+        setLockedWordIndex(null);
+      }
 
-        if (isListeningRef.current) {
-            console.log("TextEditor: Hand tracking lost while listening - cancelling");
-            stopListening(false); // Do not apply changes
+      if (isListeningRef.current) {
+        console.log("TextEditor: Hand tracking lost while listening - cancelling");
+        stopListening(false); // Do not apply changes
 
-            setHandTrackingError("Hand not detected -- action cancelled");
+        setHandTrackingError("Hand not detected: action cancelled");
 
-            // Clear error after a delay
-            setTimeout(() => {
-                setHandTrackingError(null);
-            }, 3000);
-        }
+        // Clear error after a delay
+        setTimeout(() => {
+          setHandTrackingError(null);
+        }, 3000);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -350,7 +350,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
     } else {
       setSpacebarHintVisible(false);
     }
-  }, [focusedWordIndex,  isListening]);
+  }, [focusedWordIndex, isListening]);
 
   // Function to show temporary feedback toast
   const showTemporaryFeedback = useCallback((message: string) => {
@@ -756,10 +756,10 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
   const handleWordMouseLeave = useCallback((index: number) => {
     if (
-        !wordsRef.current[index] ||
-        wordsRef.current[index].trim() === "" ||
-        lockedWordIndex !== null ||
-        isListeningRef.current
+      !wordsRef.current[index] ||
+      wordsRef.current[index].trim() === "" ||
+      lockedWordIndex !== null ||
+      isListeningRef.current
     )
       return;
     // console.log(`Unfocusing word ${index}`); // Removed for performance
@@ -852,8 +852,8 @@ export const TextEditor: React.FC<TextEditorProps> = ({
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2 }}
             >
-               <div className="text-white font-medium mb-1">Error</div>
-               <div className="text-sm font-light text-white/90">{handTrackingError}</div>
+              <div className="text-white font-medium mb-1">Error</div>
+              <div className="text-sm font-light text-white/90">{handTrackingError}</div>
             </motion.div>
           ) : isListening ? (
             <motion.div
@@ -869,7 +869,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
                 )}
               </div>
               <div className="text-white/60 text-xs">
-                Release space to apply
+                Release space or hand to apply
               </div>
             </motion.div>
           ) : spacebarHintVisible ? (
@@ -879,7 +879,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="text-sm font-light">Hold space to speak</div>
+              <div className="text-sm font-light">Lift your hand to select. Pinch and hold to voice-replace.</div>
             </motion.div>
           ) : (
             <motion.div
