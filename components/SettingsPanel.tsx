@@ -11,6 +11,8 @@ interface SettingsPanelProps {
     setHandTrackingMode: (v: "Center" | "Relative") => void;
     handSensitivity: number;
     setHandSensitivity: (v: number) => void;
+    handTrackingLossThreshold: number;
+    setHandTrackingLossThreshold: (v: number) => void;
     showHandCamera: boolean;
     setShowHandCamera: (v: boolean) => void;
 
@@ -49,6 +51,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setHandTrackingMode,
     handSensitivity,
     setHandSensitivity,
+    handTrackingLossThreshold,
+    setHandTrackingLossThreshold,
     showHandCamera,
     setShowHandCamera,
     faceTrackingEnabled,
@@ -187,6 +191,23 @@ eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEna
                                                 onChange={(e) => setHandSensitivity(Number(e.target.value))}
                                                 className="w-full accent-white/80 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
                                             />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <Label>Loss Threshold (Debounce)</Label>
+                                                <span className="text-xs text-white/50 font-mono">{handTrackingLossThreshold}ms</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="1000"
+                                                step="50"
+                                                value={handTrackingLossThreshold}
+                                                onChange={(e) => setHandTrackingLossThreshold(Number(e.target.value))}
+                                                className="w-full accent-white/80 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                                            />
+                                            <p className="text-xs text-white/40 font-light">Delay before cancelling actions when hand is lost.</p>
                                         </div>
 
                                         <ControlRow label="Show Camera Feed" value={showHandCamera} onChange={setShowHandCamera} />

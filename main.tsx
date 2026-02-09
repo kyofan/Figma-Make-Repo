@@ -38,6 +38,7 @@ export default function SpatialTextInput({
   const [handDominantHand, setHandDominantHand] = useState<"Left" | "Right">("Left");
   const [handTrackingMode, setHandTrackingMode] = useState<"Center" | "Relative">("Center");
   const [handSensitivity, setHandSensitivity] = useState(25);
+  const [handTrackingLossThreshold, setHandTrackingLossThreshold] = useState(300);
   const [showHandCamera, setShowHandCamera] = useState(true);
 
   // --- Face Tracking State ---
@@ -183,6 +184,7 @@ Head Z: ${headZ.toFixed(3)}`;
         targetHand={handDominantHand}
         trackingMode={handTrackingMode}
         sensitivity={handSensitivity}
+        trackingLossThreshold={handTrackingLossThreshold}
         showCamera={showHandCamera}
         disableHandCursor={cursorMode === "eye"}
         overrideCursorPosRef={cursorMode === "eye" && eyeTrackingEnabled ? eyeCursorRef : undefined}
@@ -326,6 +328,8 @@ Head Z: ${headZ.toFixed(3)}`;
         setHandTrackingMode={setHandTrackingMode}
         handSensitivity={handSensitivity}
         setHandSensitivity={setHandSensitivity}
+        handTrackingLossThreshold={handTrackingLossThreshold}
+        setHandTrackingLossThreshold={setHandTrackingLossThreshold}
         showHandCamera={showHandCamera}
         setShowHandCamera={setShowHandCamera}
         faceTrackingEnabled={faceTrackingEnabled}

@@ -69,6 +69,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [spacebarHintVisible, setSpacebarHintVisible] = useState(false);
+  const [handTrackingError, setHandTrackingError] = useState<string | null>(null);
 
   // Use refs to avoid state updates that could cause render loops
   const textContainerRef = useRef<HTMLDivElement | null>(null);
@@ -272,12 +273,29 @@ export const TextEditor: React.FC<TextEditorProps> = ({
       }
     };
 
+    // Custom event handler for hand tracking loss
+    const handleHandLost = () => {
+        if (isListeningRef.current) {
+            console.log("TextEditor: Hand tracking lost while listening - cancelling");
+            stopListening(false); // Do not apply changes
+
+            setHandTrackingError("Hand not detected -- action cancelled");
+
+            // Clear error after a delay
+            setTimeout(() => {
+                setHandTrackingError(null);
+            }, 3000);
+        }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("hand-tracking-lost", handleHandLost);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("hand-tracking-lost", handleHandLost);
     };
   }, [isListening, focusedWordIndex, lockedWordIndex]);
 
@@ -811,7 +829,18 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
       <div className="controls-container flex flex-col items-center space-y-6 w-full max-w-3xl">
         <div className="flex space-x-4 w-full justify-center min-h-[110px] items-center">
-          {isListening ? (
+          {handTrackingError ? (
+            <motion.div
+              className="px-6 py-3 rounded-2xl bg-red-500/20 backdrop-blur-md border border-red-400/30 text-white text-center min-w-[250px]"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+            >
+               <div className="text-white font-medium mb-1">Error</div>
+               <div className="text-sm font-light text-white/90">{handTrackingError}</div>
+            </motion.div>
+          ) : isListening ? (
             <motion.div
               className="px-6 py-3 rounded-2xl bg-blue-500/20 backdrop-blur-md border border-blue-400/30 text-white text-center min-w-[250px]"
               initial={{ opacity: 0, scale: 0.9 }}
