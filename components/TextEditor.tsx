@@ -275,6 +275,13 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
     // Custom event handler for hand tracking loss
     const handleHandLost = () => {
+        // Clear focus and lock immediately when hand is lost
+        if (focusedWordIndex !== null || lockedWordIndex !== null) {
+          console.log("TextEditor: Hand tracking lost - clearing focus/lock");
+          setFocusedWordIndex(null);
+          setLockedWordIndex(null);
+        }
+
         if (isListeningRef.current) {
             console.log("TextEditor: Hand tracking lost while listening - cancelling");
             stopListening(false); // Do not apply changes
