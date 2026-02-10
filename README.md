@@ -14,7 +14,7 @@ This project simulates the magical interaction model of VisionOS (Eye Tracking +
 As spatial computing (AR/VR) becomes more prevalent, our interaction paradigms are shifting from "Point & Click" to **"Look & Speak."** This prototype proves that these rich, multimodal interactions can be built today using standard web technologies, making them accessible to anyone with a laptop.
 
 ### Core Interaction Loop
-1.  **Look to Select**: Your eyes (or head position) act as the cursor. Elements react to your gaze.
+1.  **Lift your hand to Select**: Your eyes (or head position) act as the cursor. Elements react to your gaze.
 2.  **Pinch to Click**: A simple hand gesture confirms your intent, separating "selection" from "action" to prevent accidental clicks (the Midas Touch problem).
 3.  **Speak to Edit**: Voice is not just for dictation—it's for command. Hold a pinch and speak to contextually replace words.
 
