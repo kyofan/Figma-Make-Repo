@@ -45,6 +45,7 @@ export default function SpatialTextInput({
   const [faceTrackingEnabled, setFaceTrackingEnabled] = useState(true);
   const [headTrackingSmoothing, setHeadTrackingSmoothing] = useState(true);
   const [showFaceDebug, setShowFaceDebug] = useState(false);
+  const [debugCameraControls, setDebugCameraControls] = useState(false);
 
   // --- Eye Tracking State ---
   const [eyeTrackingEnabled, setEyeTrackingEnabled] = useState(false);
@@ -178,6 +179,7 @@ Head Z: ${headZ.toFixed(3)}`;
         headZ={headZ}
         smoothingEnabled={headTrackingSmoothing}
         onCameraUpdate={handleCameraUpdate}
+        debugCameraControls={debugCameraControls}
       />
       <HandTrackingManager
         isTracking={handTrackingEnabled}
@@ -338,6 +340,8 @@ Head Z: ${headZ.toFixed(3)}`;
         setHeadTrackingSmoothing={setHeadTrackingSmoothing}
         showFaceDebug={showFaceDebug}
         setShowFaceDebug={setShowFaceDebug}
+        debugCameraControls={debugCameraControls}
+        setDebugCameraControls={setDebugCameraControls}
 
         eyeTrackingEnabled={eyeTrackingEnabled}
         setEyeTrackingEnabled={setEyeTrackingEnabled}
