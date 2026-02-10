@@ -73,8 +73,16 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
     useEffect(() => {
         if (stream && videoRef.current) {
             videoRef.current.srcObject = stream;
+            // Force play immediately and on canplay
+            videoRef.current.play().catch(e => console.log("Auto-play started"));
+
             videoRef.current.oncanplay = () => {
                 videoRef.current?.play().catch(e => console.error("FaceTracking play error:", e));
+            };
+
+            // Log dimensions for debugging
+            videoRef.current.onloadedmetadata = () => {
+                 console.log(`FaceTracking Video Metadata: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
             };
         }
     }, [stream]);
@@ -226,8 +234,16 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
             </AnimatePresence>
 
             {/* Always render hidden tracking video to maintain stream and detection */}
-            <div className="fixed opacity-0 pointer-events-none w-1 h-1 overflow-hidden">
-                <video ref={videoRef} autoPlay playsInline muted />
+            <div className="fixed opacity-0 pointer-events-none w-1 h-1 overflow-hidden" style={{ top: -1000, left: -1000 }}>
+                {/* Explicit dimensions required for some browsers to decode frames even if hidden */}
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    width="640"
+                    height="480"
+                />
             </div>
 
             {error && (

@@ -158,8 +158,8 @@ eyeTrackingEnabled, setEyeTrackingEnabled, eyeTrackingMode, setEyeTrackingMode, 
 
 
                         {/* Content Area */}
-                        <div className="p-5 space-y-5 max-h-[40vh] overflow-y-auto pt-2">
-                            <AnimatePresence mode="wait">
+                        <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto pt-2 min-h-[300px]">
+                            <AnimatePresence mode="wait" initial={false}>
                                 {activeTab === "hand" && (
                                     <motion.div
                                         key="hand"

@@ -53,6 +53,24 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
                     .showPredictionPoints(true)
                     .applyKalmanFilter(true);
 
+                // FORCE HIDE WebGazer DOM elements that might persist
+                const hideElement = (id: string) => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.style.position = "absolute";
+                        el.style.top = "-9999px";
+                        el.style.left = "-9999px";
+                        el.style.width = "0";
+                        el.style.height = "0";
+                        el.style.opacity = "0";
+                        el.style.zIndex = "-1";
+                        // el.style.display = "none"; // Avoid display:none as it might pause processing
+                    }
+                };
+                hideElement("webgazerVideoFeed");
+                hideElement("webgazerFaceOverlay");
+                hideElement("webgazerVideoCanvas");
+
                 // Setup listener
                 window.webgazer.setGazeListener((data: any, clock: number) => {
                     if (data && onGazeMove) {

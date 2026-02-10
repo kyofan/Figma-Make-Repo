@@ -416,6 +416,16 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
             handleTrackingLoss();
         }
 
+        // Always update cursor from override ref (Eye Tracker) if active, even if hand lost
+        if (overrideCursorPosRef?.current) {
+             cursorRef.current = overrideCursorPosRef.current;
+             setCursorPosition({ ...cursorRef.current });
+             // Clear pinch state visual if hand is lost (so we don't show a stuck pinch)
+             if (!handLandmarker || results.landmarks.length === 0) {
+                 setIsPinching(false);
+             }
+        }
+
         canvasCtx.restore();
 
         requestRef.current = requestAnimationFrame(predict);
@@ -427,7 +437,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
 
         if (!trackingLossTimeoutRef.current) {
             trackingLossTimeoutRef.current = setTimeout(() => {
-                console.log("Hand Tracking: Lost confirmed after timeout");
+                // console.log("Hand Tracking: Lost confirmed after timeout");
 
                 // 1. Notify TextEditor specifically about the loss
                 window.dispatchEvent(new CustomEvent("hand-tracking-lost"));
@@ -470,7 +480,12 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                 // Reset tracking state
                 wasTrackingRef.current = false;
                 handStartPosRef.current = null;
-                setCursorPosition(null); // Hide cursor
+
+                // Only hide cursor if NOT in override mode (Eye Tracking)
+                if (!overrideCursorPosRef?.current) {
+                    setCursorPosition(null);
+                }
+
                 trackingLossTimeoutRef.current = null;
             }, trackingLossThreshold);
         }
