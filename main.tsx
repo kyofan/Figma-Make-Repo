@@ -38,6 +38,7 @@ export default function SpatialTextInput({
   const [handDominantHand, setHandDominantHand] = useState<"Left" | "Right">("Left");
   const [handTrackingMode, setHandTrackingMode] = useState<"Center" | "Relative">("Center");
   const [handSensitivity, setHandSensitivity] = useState(25);
+  const [handTrackingLossThreshold, setHandTrackingLossThreshold] = useState(300);
   const [showHandCamera, setShowHandCamera] = useState(true);
 
   // --- Face Tracking State ---
@@ -55,17 +56,17 @@ export default function SpatialTextInput({
   const [rawHeadZ, setRawHeadZ] = useState(0);
 
   // Performance: Use Refs and MotionValues for high-frequency gaze data
-  const eyeCursorRef = useRef<{x: number, y: number} | null>(null);
+  const eyeCursorRef = useRef<{ x: number, y: number } | null>(null);
   const eyeX = useMotionValue(typeof window !== "undefined" ? window.innerWidth / 2 : 0);
   const eyeY = useMotionValue(typeof window !== "undefined" ? window.innerHeight / 2 : 0);
 
   const handleGazeMove = useCallback((pos: { x: number; y: number }) => {
-      // Update Ref for HandTrackingManager (logic)
-      eyeCursorRef.current = pos;
+    // Update Ref for HandTrackingManager (logic)
+    eyeCursorRef.current = pos;
 
-      // Update MotionValues for FoveatedOverlay (animation)
-      eyeX.set(pos.x);
-      eyeY.set(pos.y);
+    // Update MotionValues for FoveatedOverlay (animation)
+    eyeX.set(pos.x);
+    eyeY.set(pos.y);
   }, [eyeX, eyeY]);
 
 
@@ -185,6 +186,7 @@ Head Z: ${headZ.toFixed(3)}`;
         targetHand={handDominantHand}
         trackingMode={handTrackingMode}
         sensitivity={handSensitivity}
+        trackingLossThreshold={handTrackingLossThreshold}
         showCamera={showHandCamera}
         disableHandCursor={cursorMode === "eye"}
         overrideCursorPosRef={cursorMode === "eye" && eyeTrackingEnabled ? eyeCursorRef : undefined}
@@ -196,18 +198,18 @@ Head Z: ${headZ.toFixed(3)}`;
       />
 
       <FoveatedOverlay
-         gazeX={eyeX}
-         gazeY={eyeY}
-         depthZ={rawHeadZ}
-         enabled={eyeTrackingEnabled && foveatedRenderingEnabled}
-         baseRadius={foveatedRadius}
+        gazeX={eyeX}
+        gazeY={eyeY}
+        depthZ={rawHeadZ}
+        enabled={eyeTrackingEnabled && foveatedRenderingEnabled}
+        baseRadius={foveatedRadius}
       />
 
       {eyeTrackingEnabled && (
         <EyeTrackingManager
-           onGazeMove={handleGazeMove}
-           isCalibrationActive={isCalibrationActive}
-           onCalibrationComplete={() => setIsCalibrationActive(false)}
+          onGazeMove={handleGazeMove}
+          isCalibrationActive={isCalibrationActive}
+          onCalibrationComplete={() => setIsCalibrationActive(false)}
         />
       )}
 
@@ -248,74 +250,74 @@ Head Z: ${headZ.toFixed(3)}`;
 
 
 
-                  {/* Global Cursor Mode Switcher */}
+      {/* Global Cursor Mode Switcher */}
       <motion.div
         className="fixed top-4 right-20 z-[100]"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
       >
-          <div className="flex p-1 bg-white/10 backdrop-blur-3xl rounded-full border border-white/10 shadow-2xl relative overflow-hidden">
-            <button
-                onClick={() => setCursorMode("hand")}
-                className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-colors duration-200 outline-none
+        <div className="flex p-1 bg-white/10 backdrop-blur-3xl rounded-full border border-white/10 shadow-2xl relative overflow-hidden">
+          <button
+            onClick={() => setCursorMode("hand")}
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-colors duration-200 outline-none
                     ${cursorMode === "hand" ? "text-white" : "text-white/50 hover:text-white/80"}`}
-            >
-                {cursorMode === "hand" && (
-                    <motion.div
-                        layoutId="global-cursor-mode"
-                        className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full border border-white/20 shadow-sm"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                )}
-                <span className="relative z-10 flex items-center gap-2">
-                    <Hand size={14} /> Hand
-                </span>
-            </button>
-            <button
-                onClick={() => {
-                    setCursorMode("eye");
-                    if (!eyeTrackingEnabled) {
-                        setEyeTrackingEnabled(true);
-                    }
-                }}
-                className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-colors duration-200 outline-none
+          >
+            {cursorMode === "hand" && (
+              <motion.div
+                layoutId="global-cursor-mode"
+                className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full border border-white/20 shadow-sm"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              <Hand size={14} /> Hand
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              setCursorMode("eye");
+              if (!eyeTrackingEnabled) {
+                setEyeTrackingEnabled(true);
+              }
+            }}
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-colors duration-200 outline-none
                     ${cursorMode === "eye" ? "text-white" : "text-white/50 hover:text-white/80"}`}
-            >
-                {cursorMode === "eye" && (
-                    <motion.div
-                        layoutId="global-cursor-mode"
-                        className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full border border-white/20 shadow-sm"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                )}
-                <span className="relative z-10 flex items-center gap-2">
-                    <Eye size={14} /> Eye
-                </span>
-            </button>
+          >
+            {cursorMode === "eye" && (
+              <motion.div
+                layoutId="global-cursor-mode"
+                className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full border border-white/20 shadow-sm"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              <Eye size={14} /> Eye
+            </span>
+          </button>
         </div>
       </motion.div>
 
       {/* Calibration Prompt */}
       <AnimatePresence>
         {cursorMode === "eye" && !isCalibrationActive && eyeTrackingEnabled && (
-            <motion.div
-                initial={{ opacity: 0, y: 20, x: "-50%" }}
-                animate={{ opacity: 1, y: 0, x: "-50%" }}
-                exit={{ opacity: 0, y: 20, x: "-50%" }}
-                className="fixed bottom-10 left-1/2 z-[200] flex items-center gap-4 bg-red-500/10 border border-red-500/20 backdrop-blur-xl p-4 rounded-2xl shadow-2xl"
+          <motion.div
+            initial={{ opacity: 0, y: 20, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 20, x: "-50%" }}
+            className="fixed bottom-10 left-1/2 z-[200] flex items-center gap-4 bg-red-500/10 border border-red-500/20 backdrop-blur-xl p-4 rounded-2xl shadow-2xl"
+          >
+            <div className="flex flex-col">
+              <span className="text-white font-medium text-sm">Eye Control Active</span>
+              <span className="text-white/50 text-xs">For best results, please calibrate.</span>
+            </div>
+            <button
+              onClick={() => setIsCalibrationActive(true)}
+              className="px-4 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 transition-colors"
             >
-                <div className="flex flex-col">
-                    <span className="text-white font-medium text-sm">Eye Control Active</span>
-                    <span className="text-white/50 text-xs">For best results, please calibrate.</span>
-                </div>
-                <button
-                    onClick={() => setIsCalibrationActive(true)}
-                    className="px-4 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-white/90 transition-colors"
-                >
-                    Calibrate Now
-                </button>
-            </motion.div>
+              Calibrate Now
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -328,6 +330,8 @@ Head Z: ${headZ.toFixed(3)}`;
         setHandTrackingMode={setHandTrackingMode}
         handSensitivity={handSensitivity}
         setHandSensitivity={setHandSensitivity}
+        handTrackingLossThreshold={handTrackingLossThreshold}
+        setHandTrackingLossThreshold={setHandTrackingLossThreshold}
         showHandCamera={showHandCamera}
         setShowHandCamera={setShowHandCamera}
         faceTrackingEnabled={faceTrackingEnabled}
@@ -373,7 +377,7 @@ Head Z: ${headZ.toFixed(3)}`;
         transition={{ delay: 1 }}
       >
         <div className="flex flex-col items-end">
-          <span className="text-[1rem] whitespace-nowrap">Prototype for Spatial Computing • v2.7.1</span>
+          <span className="text-[1rem] whitespace-nowrap">Prototype for Spatial Computing • v2.7.2</span>
         </div>
         <div className="h-8 w-px bg-white/10 mx-1" />
         <img

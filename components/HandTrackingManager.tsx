@@ -18,6 +18,7 @@ interface HandTrackingManagerProps {
     targetHand: "Right" | "Left";
     trackingMode: "Center" | "Relative";
     sensitivity: number;
+    trackingLossThreshold?: number; // Optional to keep backward compatibility if needed, but we passed it
     showCamera: boolean;
 }
 
@@ -29,6 +30,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     targetHand,
     trackingMode,
     sensitivity,
+    trackingLossThreshold = 300,
     showCamera
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -61,6 +63,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
         holdReleaseTime: 0  // Track when hold was released
     });
     const lastHoveredElement = useRef<Element | null>(null);
+    const trackingLossTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Sync prop
     useEffect(() => {
@@ -216,6 +219,12 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
             // If detection is robust, we stick to targetIndex.
 
             if (targetIndex !== -1) {
+                // Tracking confirmed - Clear any pending loss timeout
+                if (trackingLossTimeoutRef.current) {
+                    clearTimeout(trackingLossTimeoutRef.current);
+                    trackingLossTimeoutRef.current = null;
+                }
+
                 const landmarks = results.landmarks[targetIndex];
 
                 // Draw component handles debug drawing internally if needed, but we draw here for the camera feed
@@ -366,7 +375,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                                 console.log(`Hold detected - over text container: ${isOverTextContainer}, element:`, targetElement?.className);
 
                                 if (isOverTextContainer) {
-                                    console.log("Hand Tracking: Spacebar Down (Hold Detected)");
+                                    // console.log("Hand Tracking: Spacebar Down (Hold Detected)");
                                     window.dispatchEvent(new KeyboardEvent("keydown", {
                                         code: "Space",
                                         key: " ",
@@ -375,7 +384,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                                     }));
                                     pinchStateRef.current.isHolding = true;
                                 } else {
-                                    console.log("Hand Tracking: Hold detected but not over text area - ignoring");
+                                    // console.log("Hand Tracking: Hold detected but not over text area - ignoring");
                                 }
                             }
                         }
@@ -396,7 +405,7 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                             }
 
                             if (isHolding) {
-                                console.log("Hand Tracking: Spacebar Up (Hold Released)");
+                                // console.log("Hand Tracking: Spacebar Up (Hold Released)");
                                 window.dispatchEvent(new KeyboardEvent("keyup", {
                                     code: "Space",
                                     key: " ",
@@ -437,16 +446,73 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                     }
                 }
             } else {
-                // Hand lost or wrong hand
-                wasTrackingRef.current = false;
-                handStartPosRef.current = null;
+                // Hand lost or wrong hand (Target not found)
+                handleTrackingLoss();
             }
+        } else {
+            // No landmarks detected
+            handleTrackingLoss();
         }
 
         canvasCtx.restore();
 
         requestRef.current = requestAnimationFrame(predict);
-    }, [handLandmarker, isTracking, targetHand, trackingMode, sensitivity, disableHandCursor]);
+    }, [handLandmarker, isTracking, targetHand, trackingMode, sensitivity, disableHandCursor, trackingLossThreshold]);
+
+    const handleTrackingLoss = () => {
+        // Only trigger loss logic if we are holding or need to reset state
+        // And use debounce to prevent flickering
+
+        if (!trackingLossTimeoutRef.current) {
+            trackingLossTimeoutRef.current = setTimeout(() => {
+                console.log("Hand Tracking: Lost confirmed after timeout");
+
+                // 1. Notify TextEditor specifically about the loss
+                window.dispatchEvent(new CustomEvent("hand-tracking-lost"));
+
+                // If holding, release the hold properly
+                if (pinchStateRef.current.isHolding) {
+                    // 2. Fallback: Dispatch Space keyup to ensure other listeners clear state
+                    // Small delay to let custom event handlers run first if needed
+                    setTimeout(() => {
+                    window.dispatchEvent(new KeyboardEvent("keyup", {
+                        code: "Space",
+                        key: " ",
+                        bubbles: true
+                    }));
+                    }, 10);
+
+                    pinchStateRef.current.isHolding = false;
+                    pinchStateRef.current.isPinching = false;
+                    pinchStateRef.current.justReleasedHold = true;
+                    setTimeout(() => { pinchStateRef.current.justReleasedHold = false; }, 300);
+                }
+
+                // Clear hover state on last element if any
+                if (lastHoveredElement.current) {
+                    lastHoveredElement.current.dispatchEvent(new MouseEvent("mouseout", {
+                        bubbles: true,
+                        view: window,
+                        clientX: cursorRef.current.x,
+                        clientY: cursorRef.current.y
+                    }));
+                    lastHoveredElement.current.dispatchEvent(new MouseEvent("mouseleave", {
+                        bubbles: false,
+                        view: window,
+                        clientX: cursorRef.current.x,
+                        clientY: cursorRef.current.y
+                    }));
+                    lastHoveredElement.current = null;
+                }
+
+                // Reset tracking state
+                wasTrackingRef.current = false;
+                handStartPosRef.current = null;
+                setCursorPosition(null); // Hide cursor
+                trackingLossTimeoutRef.current = null;
+            }, trackingLossThreshold);
+        }
+    };
 
     useEffect(() => {
         requestRef.current = requestAnimationFrame(predict);
