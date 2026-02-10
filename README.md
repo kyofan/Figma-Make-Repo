@@ -15,7 +15,7 @@ As spatial computing (AR/VR) becomes more prevalent, our interaction paradigms a
 
 ### Core Interaction Loop
 1.  **Lift your hand to Select**: Your eyes (or head position) act as the cursor. Elements react to your gaze.
-2.  **Pinch to Click**: A simple hand gesture confirms your intent, separating "selection" from "action" to prevent accidental clicks (the Midas Touch problem).
+2.  **Pinch and hold to voice-replace**: A simple hand gesture confirms your intent, separating "selection" from "action" to prevent accidental clicks (the Midas Touch problem).
 3.  **Speak to Edit**: Voice is not just for dictation—it's for command. Hold a pinch and speak to contextually replace words.
 
 ---
