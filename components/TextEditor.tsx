@@ -453,8 +453,26 @@ export const TextEditor: React.FC<TextEditorProps> = ({
 
     // First, let's build an understanding of the sentence structure
     // We'll create word objects that include their index and type
+    // OPTIMIZATION: Instead of scanning the entire document (O(N)), we scan a local window
+    // around the target word since we only need immediate context (O(1)).
     const structuredWords = [];
-    for (let i = 0; i < words.length; i++) {
+
+    // Find window boundaries (+/- 10 non-space words is more than enough for our lookahead/behind)
+    let startIndex = wordIndex;
+    let countBack = 0;
+    while (startIndex > 0 && countBack < 10) {
+      startIndex--;
+      if (words[startIndex].trim() !== "") countBack++;
+    }
+
+    let endIndex = wordIndex;
+    let countForward = 0;
+    while (endIndex < words.length - 1 && countForward < 10) {
+      endIndex++;
+      if (words[endIndex].trim() !== "") countForward++;
+    }
+
+    for (let i = startIndex; i <= endIndex; i++) {
       if (words[i].trim() === "") {
         // Skip spaces for the analysis (we'll keep them for reconstruction)
         continue;
