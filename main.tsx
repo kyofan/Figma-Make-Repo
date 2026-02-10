@@ -43,7 +43,7 @@ export default function SpatialTextInput({
 
   // --- Face Tracking State ---
   const [faceTrackingEnabled, setFaceTrackingEnabled] = useState(true);
-  const [headTrackingSmoothing, setHeadTrackingSmoothing] = useState(true);
+  const [headTrackingSmoothing, setHeadTrackingSmoothing] = useState(false);
   const [showFaceDebug, setShowFaceDebug] = useState(false);
   const [debugCameraControls, setDebugCameraControls] = useState(false);
 
