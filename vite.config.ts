@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -10,5 +11,10 @@ export default defineConfig({
             // Mock the figma:react import for local browser preview
             'figma:react': path.resolve(__dirname, './figma-mock.ts'),
         },
+    },
+    test: {
+        globals: true,
+        environment: 'jsdom',
+        setupFiles: './src/test/setup.ts',
     },
 });

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion, MotionValue, useTransform, useSpring } from "motion/react";
 import { StandaloneSplatViewer } from "./StandaloneSplatViewer";
 
@@ -46,6 +46,36 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   const parallaxX = useTransform(effectiveX, (value) => value * parallaxIntensity);
   const parallaxY = useTransform(effectiveY, (value) => value * -parallaxIntensity);
 
+  // Memoize particle configuration to prevent random values from changing on re-renders
+  const particles = useMemo(() => {
+    return Array.from({ length: 8 }).map((_, i) => ({
+      id: i,
+      initial: {
+        x: Math.random() * 100 - 50 + "%",
+        y: Math.random() * 100 - 50 + "%",
+        scale: Math.random() * 0.5 + 0.5,
+      },
+      animate: {
+        x: [
+          Math.random() * 100 - 50 + "%",
+          Math.random() * 100 - 50 + "%",
+          Math.random() * 100 - 50 + "%",
+        ],
+        y: [
+          Math.random() * 100 - 50 + "%",
+          Math.random() * 100 - 50 + "%",
+          Math.random() * 100 - 50 + "%",
+        ],
+      },
+      transition: {
+        duration: 20 + Math.random() * 30,
+        repeat: Infinity,
+        repeatType: "reverse" as const,
+        ease: "easeInOut",
+      },
+    }));
+  }, []);
+
   if (type === "original") {
     return (
       <>
@@ -54,33 +84,13 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
 
         {/* Subtle particle/light effect in background */}
         <div className="absolute inset-0 z-0 opacity-20">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {particles.map((p) => (
             <motion.div
-              key={i}
+              key={p.id}
               className="absolute w-48 h-48 rounded-full bg-gradient-to-r from-blue-400/30 to-purple-400/30 blur-3xl"
-              initial={{
-                x: Math.random() * 100 - 50 + "%",
-                y: Math.random() * 100 - 50 + "%",
-                scale: Math.random() * 0.5 + 0.5,
-              }}
-              animate={{
-                x: [
-                  Math.random() * 100 - 50 + "%",
-                  Math.random() * 100 - 50 + "%",
-                  Math.random() * 100 - 50 + "%",
-                ],
-                y: [
-                  Math.random() * 100 - 50 + "%",
-                  Math.random() * 100 - 50 + "%",
-                  Math.random() * 100 - 50 + "%",
-                ],
-              }}
-              transition={{
-                duration: 20 + Math.random() * 30,
-                repeat: Infinity,
-                repeatType: "reverse",
-                ease: "easeInOut",
-              }}
+              initial={p.initial}
+              animate={p.animate}
+              transition={p.transition}
             />
           ))}
         </div>
