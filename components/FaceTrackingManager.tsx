@@ -5,6 +5,7 @@ import {
     DrawingUtils
 } from "@mediapipe/tasks-vision";
 import { motion, AnimatePresence } from "motion/react";
+import { useCamera } from "./CameraProvider";
 
 interface FaceTrackingManagerProps {
     onHeadMove?: (position: { x: number; y: number; z: number }) => void;
@@ -23,15 +24,13 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
     // Tracking refs (hidden)
     const videoRef = useRef<HTMLVideoElement>(null);
     const requestRef = useRef<number>();
-    const streamRef = useRef<MediaStream | null>(null);
 
     // Debug View refs (visible)
     const debugVideoRef = useRef<HTMLVideoElement>(null);
     const debugCanvasRef = useRef<HTMLCanvasElement>(null);
 
+    const { stream, isLoading, error } = useCamera();
     const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
-    const [isCameraActive, setIsCameraActive] = useState(false);
-    const [cameraError, setCameraError] = useState<string | null>(null);
 
     // Initialize FaceLandmarker
     useEffect(() => {
@@ -70,64 +69,28 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
         };
     }, []);
 
-    // Request Camera Access
-    const startCamera = async () => {
-        if (!videoRef.current) return;
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    width: 1280,
-                    height: 720,
-                    facingMode: "user"
-                },
-                audio: false
-            });
-
-            streamRef.current = stream;
-            videoRef.current.srcObject = stream;
-
-            videoRef.current.oncanplay = () => {
-                videoRef.current?.play().then(() => {
-                    setIsCameraActive(true);
-                    setCameraError(null);
-                }).catch(e => console.error("Play error:", e));
-            };
-        } catch (err) {
-            console.error("Error accessing camera:", err);
-            setCameraError("Camera permission denied.");
-        }
-    };
-
+    // Assign stream
     useEffect(() => {
-        if (faceLandmarker && !isCameraActive) {
-            startCamera();
+        if (stream && videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.oncanplay = () => {
+                videoRef.current?.play().catch(e => console.error("FaceTracking play error:", e));
+            };
         }
-
-        // Cleanup stream on unmount
-        return () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                streamRef.current = null;
-            }
-        };
-    }, [faceLandmarker]);
+    }, [stream]);
 
     // Sync stream to debug video
     useEffect(() => {
-        if (showDebugView && isCameraActive && videoRef.current && debugVideoRef.current) {
-            // Check if stream is already assigned to avoid flickering
-            if (debugVideoRef.current.srcObject !== videoRef.current.srcObject) {
-                debugVideoRef.current.srcObject = videoRef.current.srcObject;
-                debugVideoRef.current.oncanplay = () => {
-                    debugVideoRef.current?.play().catch(e => console.error("Debug play error:", e));
-                };
-            }
+        if (showDebugView && stream && debugVideoRef.current) {
+            debugVideoRef.current.srcObject = stream;
+            debugVideoRef.current.oncanplay = () => {
+                debugVideoRef.current?.play().catch(e => console.error("Debug play error:", e));
+            };
         }
-    }, [showDebugView, isCameraActive]);
+    }, [showDebugView, stream]);
 
     const predict = useCallback(() => {
-        if (!faceLandmarker || !videoRef.current) return;
+        if (!faceLandmarker || !videoRef.current || isLoading) return;
 
         if (!isTracking) {
             requestRef.current = requestAnimationFrame(predict);
@@ -177,7 +140,14 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
                     const gazeX = (irisX - 0.5) * 2;
                     const gazeY = (irisY - 0.5) * 2;
 
-                    onEyeGaze({ x: gazeX, y: gazeY });
+                    // Map to screen coordinates (Simple approximation for "Standard" mode)
+                    // Invert X because of mirroring if needed, but let's assume standard behavior first
+                    // Sensitivity multiplier to make it usable
+                    const sensitivity = 2.5;
+                    const screenX = (window.innerWidth / 2) - (gazeX * (window.innerWidth / 2) * sensitivity);
+                    const screenY = (window.innerHeight / 2) + (gazeY * (window.innerHeight / 2) * sensitivity);
+
+                    onEyeGaze({ x: screenX, y: screenY });
                 }
             }
         }
@@ -260,9 +230,9 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
                 <video ref={videoRef} autoPlay playsInline muted />
             </div>
 
-            {cameraError && (
+            {error && (
                 <div className="fixed top-0 left-0 w-full p-2 bg-red-500/20 text-red-200 text-xs text-center z-[200]">
-                    Face Tracking Error: {cameraError}
+                    Face Tracking Error: {error}
                 </div>
             )}
         </div>

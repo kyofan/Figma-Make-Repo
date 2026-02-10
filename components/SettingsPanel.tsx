@@ -29,6 +29,8 @@ interface SettingsPanelProps {
     cameraDebugInfo: string;
     eyeTrackingEnabled: boolean;
     setEyeTrackingEnabled: (v: boolean) => void;
+    eyeTrackingMode: "standard" | "calibrated";
+    setEyeTrackingMode: (v: "standard" | "calibrated") => void;
     onCalibrateEye: () => void;
     foveatedRenderingEnabled: boolean;
     setFoveatedRenderingEnabled: (v: boolean) => void;
@@ -67,7 +69,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setDebugCameraControls,
     onCopyParams,
     cameraDebugInfo,
-eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEnabled, setFoveatedRenderingEnabled , foveatedRadius, setFoveatedRadius }) => {
+eyeTrackingEnabled, setEyeTrackingEnabled, eyeTrackingMode, setEyeTrackingMode, onCalibrateEye , foveatedRenderingEnabled, setFoveatedRenderingEnabled , foveatedRadius, setFoveatedRadius }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>("hand");
 
@@ -266,6 +268,19 @@ eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEna
                                         className="space-y-5"
                                     >
                                         <ControlRow label="Enable Tracking" value={eyeTrackingEnabled} onChange={setEyeTrackingEnabled} />
+
+                                        <div className="space-y-2">
+                                            <Label>Tracking Mode</Label>
+                                            <SegmentedControl
+                                                options={["Standard", "Calibrated"]}
+                                                value={eyeTrackingMode === "standard" ? "Standard" : "Calibrated"}
+                                                onChange={(v) => setEyeTrackingMode(v === "Standard" ? "standard" : "calibrated")}
+                                            />
+                                            <p className="text-xs text-white/40 font-light">
+                                                {eyeTrackingMode === "standard" ? "Instant (Face Orientation)" : "High Precision (WebGazer)"}
+                                            </p>
+                                        </div>
+
                                         <ControlRow label="Foveated Rendering" value={foveatedRenderingEnabled} onChange={setFoveatedRenderingEnabled} />
                                         <p className="text-xs text-white/40 font-light -mt-3">Blurs peripheral vision.</p>
                                         <div className="space-y-2">

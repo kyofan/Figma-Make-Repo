@@ -7,6 +7,7 @@ import {
     NormalizedLandmark
 } from "@mediapipe/tasks-vision";
 import { motion, AnimatePresence } from "motion/react";
+import { useCamera } from "./CameraProvider";
 
 // Types
 interface HandTrackingManagerProps {
@@ -37,9 +38,8 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>();
 
+    const { stream, isLoading, error } = useCamera();
     const [handLandmarker, setHandLandmarker] = useState<HandLandmarker | null>(null);
-    const [isCameraActive, setIsCameraActive] = useState(false);
-    const [cameraError, setCameraError] = useState<string | null>(null);
 
     // Cursor State
     const [cursorPosition, setCursorPosition] = useState<{ x: number, y: number } | null>(null);
@@ -109,57 +109,19 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
         };
     }, []);
 
-    // Standalone media request function for portability
-    const requestMediaAccess = async () => {
-        try {
-            return await navigator.mediaDevices.getUserMedia({
-                video: {
-                    width: 1280,
-                    height: 720,
-                    facingMode: "user"
-                },
-                audio: true // Request microphone access
-            });
-        } catch (err) {
-            throw err;
-        }
-    };
-
-    // Initialize Camera
-    const startCamera = async () => {
-        if (!videoRef.current) return;
-
-        try {
-            console.log("Requesting camera/mic access...");
-            const stream = await requestMediaAccess();
-
-            console.log("Media access granted");
-            videoRef.current.srcObject = stream;
-
-            // Explicitly play and handle promise
-            videoRef.current.oncanplay = () => {
-                console.log("Video can play, starting playback...");
-                videoRef.current?.play().then(() => {
-                    console.log("Video playing successfully");
-                    setIsCameraActive(true);
-                    setCameraError(null);
-                }).catch(e => console.error("Play error:", e));
-            };
-        } catch (err) {
-            console.error("Error accessing camera/microphone:", err);
-            setCameraError("Camera or Microphone permission denied.");
-        }
-    };
-
+    // Assign stream to video
     useEffect(() => {
-        if (handLandmarker && !isCameraActive) {
-            startCamera();
+        if (stream && videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.oncanplay = () => {
+                videoRef.current?.play().catch(e => console.error("HandTracking play error:", e));
+            };
         }
-    }, [handLandmarker]);
+    }, [stream]);
 
     // Detection Loop
     const predict = useCallback(() => {
-        if (!handLandmarker || !videoRef.current || !canvasRef.current) return;
+        if (!handLandmarker || !videoRef.current || !canvasRef.current || isLoading) return;
 
         // Resume loop even if not tracking, to keep video fresh/ready?
         // Or just pause detection.
@@ -549,9 +511,9 @@ export const HandTrackingManager: React.FC<HandTrackingManagerProps> = ({
                             {/* Status Indicator */}
                             <div className={`absolute top-2 left-2 w-2 h-2 rounded-full ${isTracking && handLandmarker ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"}`} />
 
-                            {cameraError && (
+                            {error && (
                                 <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-red-400 text-sm bg-black/80">
-                                    {cameraError}
+                                    {error}
                                 </div>
                             )}
                         </div>

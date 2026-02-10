@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useCamera } from "./CameraProvider";
 
 interface EyeTrackingManagerProps {
     onGazeMove?: (pos: { x: number; y: number }) => void;
@@ -12,6 +13,7 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
     isCalibrationActive,
     onCalibrationComplete
 }) => {
+    const { isReady } = useCamera();
     const [scriptLoaded, setScriptLoaded] = useState(false);
     const [isWebGazerReady, setIsWebGazerReady] = useState(false);
     const [calibrationPoints, setCalibrationPoints] = useState<number[]>(new Array(9).fill(0));
@@ -35,7 +37,7 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
 
     // Initialize WebGazer
     useEffect(() => {
-        if (!scriptLoaded || !window.webgazer) return;
+        if (!scriptLoaded || !window.webgazer || !isReady) return;
 
         const initWebGazer = async () => {
             try {
@@ -72,7 +74,7 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
                 window.webgazer.end();
             }
         };
-    }, [scriptLoaded]);
+    }, [scriptLoaded, isReady]);
 
     // Calibration Logic
     useEffect(() => {
