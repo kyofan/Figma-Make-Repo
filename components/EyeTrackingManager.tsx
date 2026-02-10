@@ -8,16 +8,39 @@ interface EyeTrackingManagerProps {
     onCalibrationComplete: () => void;
 }
 
+// Global style to force hide WebGazer elements
+const GLOBAL_STYLE = `
+#webgazerVideoFeed, #webgazerFaceOverlay, #webgazerVideoCanvas {
+    display: none !important;
+    opacity: 0 !important;
+    position: fixed !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+`;
+
 export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
     onGazeMove,
     isCalibrationActive,
     onCalibrationComplete
 }) => {
-    const { isReady } = useCamera();
+    const { isReady, isVideoReady } = useCamera(); // Use isVideoReady to ensure stream is playing
     const [scriptLoaded, setScriptLoaded] = useState(false);
     const [isWebGazerReady, setIsWebGazerReady] = useState(false);
     const [calibrationPoints, setCalibrationPoints] = useState<number[]>(new Array(9).fill(0));
     const [activePointIndex, setActivePointIndex] = useState(0);
+
+    // Inject global styles once
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.innerHTML = GLOBAL_STYLE;
+        document.head.appendChild(style);
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
 
     // Load WebGazer
     useEffect(() => {
@@ -37,39 +60,13 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
 
     // Initialize WebGazer
     useEffect(() => {
-        if (!scriptLoaded || !window.webgazer || !isReady) return;
+        // Wait for script, stream (isReady), and video element (isVideoReady)
+        if (!scriptLoaded || !window.webgazer || !isReady || !isVideoReady) return;
 
         const initWebGazer = async () => {
             try {
-                // Clear any previous data to ensure fresh start
+                // Clear any previous data
                 await window.webgazer.clearData();
-
-                await window.webgazer.setRegression('ridge')
-                    .setTracker('TFFacemesh')
-                    .begin();
-
-                // IMPORTANT: Hide the video feed to prevent duplicate/ugly UI
-                window.webgazer.showVideoPreview(false)
-                    .showPredictionPoints(true)
-                    .applyKalmanFilter(true);
-
-                // FORCE HIDE WebGazer DOM elements that might persist
-                const hideElement = (id: string) => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.style.position = "absolute";
-                        el.style.top = "-9999px";
-                        el.style.left = "-9999px";
-                        el.style.width = "0";
-                        el.style.height = "0";
-                        el.style.opacity = "0";
-                        el.style.zIndex = "-1";
-                        // el.style.display = "none"; // Avoid display:none as it might pause processing
-                    }
-                };
-                hideElement("webgazerVideoFeed");
-                hideElement("webgazerFaceOverlay");
-                hideElement("webgazerVideoCanvas");
 
                 // Setup listener
                 window.webgazer.setGazeListener((data: any, clock: number) => {
@@ -77,6 +74,16 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
                         onGazeMove({ x: data.x, y: data.y });
                     }
                 });
+
+                // Start
+                await window.webgazer.setRegression('ridge')
+                    .setTracker('TFFacemesh')
+                    .begin();
+
+                // Ensure UI is hidden
+                window.webgazer.showVideoPreview(false)
+                    .showPredictionPoints(false) // Only show points during calibration if needed
+                    .applyKalmanFilter(true);
 
                 console.log("WebGazer initialized");
                 setIsWebGazerReady(true);
@@ -89,25 +96,39 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
 
         return () => {
             if (window.webgazer) {
-                window.webgazer.end();
+                try {
+                    window.webgazer.end();
+                } catch (e) {
+                    console.error("WebGazer failed to end:", e);
+                }
             }
+            setIsWebGazerReady(false);
         };
-    }, [scriptLoaded, isReady]);
+    }, [scriptLoaded, isReady, isVideoReady]); // Add isVideoReady dependency
 
     // Calibration Logic
     useEffect(() => {
         if (isCalibrationActive) {
-            // Reset calibration state when activation happens
             setCalibrationPoints(new Array(9).fill(0));
             setActivePointIndex(0);
             if (window.webgazer) {
                 window.webgazer.showPredictionPoints(true);
             }
+        } else {
+             if (window.webgazer) {
+                window.webgazer.showPredictionPoints(false);
+            }
         }
     }, [isCalibrationActive]);
 
-    const handlePointClick = (index: number) => {
-        if (!isWebGazerReady) return;
+    const handlePointClick = (index: number, e: React.MouseEvent) => {
+        if (!isWebGazerReady || !window.webgazer) return;
+
+        // Record the calibration point!
+        // WebGazer records on click automatically if listening, but explicit recording is safer for custom UI
+        const x = e.clientX;
+        const y = e.clientY;
+        window.webgazer.recordScreenPosition(x, y, 'click');
 
         const newPoints = [...calibrationPoints];
         newPoints[index] += 1;
@@ -171,7 +192,7 @@ export const EyeTrackingManager: React.FC<EyeTrackingManagerProps> = ({
                                                   isCurrent ? 'bg-red-500 border-red-300 cursor-pointer animate-pulse' :
                                                   'bg-gray-500 border-gray-400 opacity-30 cursor-not-allowed'}`}
                                             style={getPosition(index)}
-                                            onClick={() => isCurrent && handlePointClick(index)}
+                                            onClick={(e) => isCurrent && handlePointClick(index, e)}
                                             disabled={!isCurrent && !isDone}
                                             whileHover={isCurrent ? { scale: 1.2 } : {}}
                                             whileTap={isCurrent ? { scale: 0.9 } : {}}

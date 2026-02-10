@@ -21,15 +21,14 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
     isTracking,
     showDebugView
 }) => {
-    // Tracking refs (hidden)
-    const videoRef = useRef<HTMLVideoElement>(null);
+    // Shared Camera
+    const { videoRef, isVideoReady, isLoading, error } = useCamera();
+
     const requestRef = useRef<number>();
 
     // Debug View refs (visible)
-    const debugVideoRef = useRef<HTMLVideoElement>(null);
     const debugCanvasRef = useRef<HTMLCanvasElement>(null);
 
-    const { stream, isLoading, error } = useCamera();
     const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
 
     // Initialize FaceLandmarker
@@ -69,38 +68,9 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
         };
     }, []);
 
-    // Assign stream
-    useEffect(() => {
-        if (stream && videoRef.current) {
-            videoRef.current.srcObject = stream;
-            // Force play immediately and on canplay
-            videoRef.current.play().catch(e => console.log("Auto-play started"));
-
-            videoRef.current.oncanplay = () => {
-                videoRef.current?.play().catch(e => console.error("FaceTracking play error:", e));
-            };
-
-            // Log dimensions for debugging
-            videoRef.current.onloadedmetadata = () => {
-                 console.log(`FaceTracking Video Metadata: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
-            };
-        }
-    }, [stream]);
-
-    // Sync stream to debug video
-    useEffect(() => {
-        if (showDebugView && stream && debugVideoRef.current) {
-            debugVideoRef.current.srcObject = stream;
-            debugVideoRef.current.oncanplay = () => {
-                debugVideoRef.current?.play().catch(e => console.error("Debug play error:", e));
-            };
-        }
-    }, [showDebugView, stream]);
 
     const predict = useCallback(() => {
-        if (!faceLandmarker || !videoRef.current || isLoading) return;
-
-        if (!isTracking) {
+        if (!faceLandmarker || !videoRef.current || !isVideoReady || isLoading) {
             requestRef.current = requestAnimationFrame(predict);
             return;
         }
@@ -110,47 +80,57 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
             return;
         }
 
-        // Use the hidden video element for detection
+        // Ensure debug canvas size matches video
+        if (showDebugView && debugCanvasRef.current) {
+             if (debugCanvasRef.current.width !== videoRef.current.videoWidth) {
+                 debugCanvasRef.current.width = videoRef.current.videoWidth;
+                 debugCanvasRef.current.height = videoRef.current.videoHeight;
+             }
+        }
+
+        if (!isTracking) {
+             // If debugging but not tracking, just show video?
+             if (showDebugView && debugCanvasRef.current) {
+                const ctx = debugCanvasRef.current.getContext("2d");
+                if (ctx) {
+                    ctx.save();
+                    ctx.scale(-1, 1);
+                    ctx.translate(-debugCanvasRef.current.width, 0);
+                    ctx.drawImage(videoRef.current, 0, 0, debugCanvasRef.current.width, debugCanvasRef.current.height);
+                    ctx.restore();
+                }
+             }
+
+            requestRef.current = requestAnimationFrame(predict);
+            return;
+        }
+
         const startTimeMs = performance.now();
         const results = faceLandmarker.detectForVideo(videoRef.current, startTimeMs);
 
-        // 1. Head Position (Parallax) & Eye Gaze
+        // 1. Logic (Head & Eye)
         if (results.faceLandmarks && results.faceLandmarks.length > 0) {
             const landmarks = results.faceLandmarks[0];
             const noseTip = landmarks[1];
-
-            const rawX = noseTip.x;
-            const rawY = noseTip.y;
-            // Face width for depth estimation (cheek to cheek: landmarks 234 and 454)
             const leftCheek = landmarks[234];
             const rightCheek = landmarks[454];
             const faceWidth = Math.abs(rightCheek.x - leftCheek.x);
-
-            const x = (rawX - 0.5) * 2; // -1 to 1
-            const y = (rawY - 0.5) * 2; // -1 to 1
-            // Use face width as depth proxy: normalize around typical 0.25 face width
-            const zFromFaceWidth = (faceWidth - 0.25) * 4.0; // ~-1 to 1 range
+            const x = (noseTip.x - 0.5) * 2;
+            const y = (noseTip.y - 0.5) * 2;
+            const zFromFaceWidth = (faceWidth - 0.25) * 4.0;
 
             if (onHeadMove) {
                 onHeadMove({ x, y, z: zFromFaceWidth });
             }
 
-            // Eye Tracking (Simple Gaze based on Iris center)
             if (onEyeGaze) {
                 if (landmarks.length > 473) {
                     const leftIris = landmarks[468];
                     const rightIris = landmarks[473];
-
-                    // Average
                     const irisX = (leftIris.x + rightIris.x) / 2;
                     const irisY = (leftIris.y + rightIris.y) / 2;
-
                     const gazeX = (irisX - 0.5) * 2;
                     const gazeY = (irisY - 0.5) * 2;
-
-                    // Map to screen coordinates (Simple approximation for "Standard" mode)
-                    // Invert X because of mirroring if needed, but let's assume standard behavior first
-                    // Sensitivity multiplier to make it usable
                     const sensitivity = 2.5;
                     const screenX = (window.innerWidth / 2) - (gazeX * (window.innerWidth / 2) * sensitivity);
                     const screenY = (window.innerHeight / 2) + (gazeY * (window.innerHeight / 2) * sensitivity);
@@ -161,17 +141,20 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
         }
 
         // 2. Debug Drawing
-        if (showDebugView && debugCanvasRef.current && debugVideoRef.current) {
+        if (showDebugView && debugCanvasRef.current) {
             const canvasCtx = debugCanvasRef.current.getContext("2d");
             if (canvasCtx) {
-                // Match dimensions
-                if (debugCanvasRef.current.width !== debugVideoRef.current.videoWidth) {
-                    debugCanvasRef.current.width = debugVideoRef.current.videoWidth;
-                    debugCanvasRef.current.height = debugVideoRef.current.videoHeight;
-                }
-
                 canvasCtx.save();
-                canvasCtx.clearRect(0, 0, debugCanvasRef.current.width, debugCanvasRef.current.height);
+
+                // Draw Video Frame (Mirrored)
+                canvasCtx.scale(-1, 1);
+                canvasCtx.translate(-debugCanvasRef.current.width, 0);
+                canvasCtx.drawImage(videoRef.current, 0, 0, debugCanvasRef.current.width, debugCanvasRef.current.height);
+
+                // Draw Landmarks (Already normalized, usually need flipping if we flipped video?
+                // MediaPipe drawing utils work on the canvas context.
+                // If we flipped the context, drawing utils will draw flipped.
+                // This is correct because landmarks match the original image.
 
                 if (results.faceLandmarks && results.faceLandmarks.length > 0) {
                     const landmarks = results.faceLandmarks[0];
@@ -194,7 +177,7 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
         }
 
         requestRef.current = requestAnimationFrame(predict);
-    }, [faceLandmarker, isTracking, showDebugView, onHeadMove, onEyeGaze]);
+    }, [faceLandmarker, isVideoReady, isTracking, showDebugView, onHeadMove, onEyeGaze]);
 
     useEffect(() => {
         requestRef.current = requestAnimationFrame(predict);
@@ -217,34 +200,14 @@ export const FaceTrackingManager: React.FC<FaceTrackingManagerProps> = ({
                         exit={{ opacity: 0, height: 0, scale: 0.8 }}
                     >
                         <div className="relative w-64 h-48">
-                            <video
-                                ref={debugVideoRef}
-                                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
-                                autoPlay
-                                playsInline
-                                muted
-                            />
                             <canvas
                                 ref={debugCanvasRef}
-                                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                                className="absolute inset-0 w-full h-full object-cover"
                             />
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* Always render hidden tracking video to maintain stream and detection */}
-            <div className="fixed opacity-0 pointer-events-none w-1 h-1 overflow-hidden" style={{ top: -1000, left: -1000 }}>
-                {/* Explicit dimensions required for some browsers to decode frames even if hidden */}
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    width="640"
-                    height="480"
-                />
-            </div>
 
             {error && (
                 <div className="fixed top-0 left-0 w-full p-2 bg-red-500/20 text-red-200 text-xs text-center z-[200]">

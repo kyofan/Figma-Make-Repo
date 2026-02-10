@@ -5,13 +5,17 @@ interface CameraContextType {
     isLoading: boolean;
     error: string | null;
     isReady: boolean;
+    videoRef: React.RefObject<HTMLVideoElement>;
+    isVideoReady: boolean;
 }
 
 const CameraContext = createContext<CameraContextType>({
     stream: null,
     isLoading: true,
     error: null,
-    isReady: false
+    isReady: false,
+    videoRef: { current: null },
+    isVideoReady: false
 });
 
 export const useCamera = () => useContext(CameraContext);
@@ -20,6 +24,9 @@ export const CameraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isVideoReady, setIsVideoReady] = useState(false);
+
+    const videoRef = useRef<HTMLVideoElement>(null);
     const originalGetUserMediaRef = useRef<typeof navigator.mediaDevices.getUserMedia | null>(null);
 
     useEffect(() => {
@@ -80,23 +87,47 @@ export const CameraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
     }, []);
 
+    // Handle video element readiness
+    useEffect(() => {
+        if (stream && videoRef.current) {
+            videoRef.current.srcObject = stream;
+
+            const handleCanPlay = () => {
+                setIsVideoReady(true);
+            };
+
+            videoRef.current.addEventListener('canplay', handleCanPlay);
+            videoRef.current.play().catch(e => console.error("CameraProvider: Auto-play failed", e));
+
+            return () => {
+                if (videoRef.current) {
+                    videoRef.current.removeEventListener('canplay', handleCanPlay);
+                }
+            };
+        } else {
+            setIsVideoReady(false);
+        }
+    }, [stream]);
+
     return (
-        <CameraContext.Provider value={{ stream, isLoading, error, isReady: !!stream && !isLoading }}>
-            {/* Keep stream active with a hidden video element */}
-            {stream && (
-                <video
-                    ref={video => {
-                        if (video && video.srcObject !== stream) {
-                            video.srcObject = stream;
-                        }
-                    }}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none"
-                    style={{ visibility: 'hidden' }}
-                />
-            )}
+        <CameraContext.Provider value={{
+            stream,
+            isLoading,
+            error,
+            isReady: !!stream && !isLoading,
+            videoRef,
+            isVideoReady
+        }}>
+            {/* Shared Hidden Video Element - The Source of Truth */}
+            <video
+                ref={videoRef}
+                id="shared-camera-feed"
+                autoPlay
+                playsInline
+                muted
+                className="fixed opacity-0 pointer-events-none"
+                style={{ top: -9999, left: -9999, width: 640, height: 480 }}
+            />
             {children}
         </CameraContext.Provider>
     );
