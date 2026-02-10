@@ -20,11 +20,16 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
   micPermissionStatus = "unknown",
   onRequestMicPermission,
 }) => {
-  const [barHeights, setBarHeights] = useState<number[]>(Array(16).fill(5));
+  // Removed state for performance optimization
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  // Direct DOM Manipulation Refs
+  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const currentHeightsRef = useRef<number[]>(Array(16).fill(5));
+  const targetHeightsRef = useRef<number[]>(Array(16).fill(5));
 
   // Initialize audio analyser when listening starts
   useEffect(() => {
@@ -33,35 +38,32 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
 
       const initializeAudioAnalyser = async () => {
         try {
-          // Try to get microphone access
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-          // Create audio context and analyser
           const AudioContext =
             window.AudioContext || (window as any).webkitAudioContext;
           audioContextRef.current = new AudioContext();
-          analyserRef.current = audioContextRef.current.createAnalyser();
 
-          // Connect microphone to analyser
+          analyserRef.current = audioContextRef.current.createAnalyser();
+          analyserRef.current.fftSize = 64; // Small FFT size for performance
+
           const source =
             audioContextRef.current.createMediaStreamSource(stream);
           source.connect(analyserRef.current);
 
-          // Configure analyser
-          analyserRef.current.fftSize = 64;
           const bufferLength = analyserRef.current.frequencyBinCount;
           dataArrayRef.current = new Uint8Array(bufferLength);
 
-          // Start visualization loop
           updateVisualization();
         } catch (err) {
           console.error("Error accessing microphone:", err);
-          // Fall back to animated bars
+          // Fallback animation if mic access fails
+          updateVisualization();
         }
       };
 
       const updateVisualization = () => {
-        if (!isListening) return;
+        let newTargetHeights: number[];
 
         if (analyserRef.current && dataArrayRef.current) {
           // Get frequency data from microphone
@@ -69,7 +71,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
           analyserRef.current.getByteFrequencyData(dataArrayRef.current);
 
           // Map frequency data to bar heights (using just a subset of frequencies)
-          const newHeights = Array(16)
+          newTargetHeights = Array(16)
             .fill(0)
             .map((_, i) => {
               const dataIndex = Math.floor(
@@ -79,15 +81,28 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
               // Scale the value to appropriate height (5-40px)
               return 5 + (value / 255) * 35;
             });
-
-          setBarHeights(newHeights);
         } else {
           // If no audio analyser, use random animation
-          setBarHeights(
-            Array(16)
-              .fill(0)
-              .map(() => 5 + Math.random() * 20),
-          );
+          newTargetHeights = Array(16)
+            .fill(0)
+            .map(() => 5 + Math.random() * 20);
+        }
+
+        targetHeightsRef.current = newTargetHeights;
+
+        // Animate bars using Lerp for smoothness
+        const smoothingFactor = 0.2; // Adjust for smoothness vs responsiveness
+
+        for (let i = 0; i < 16; i++) {
+          const current = currentHeightsRef.current[i];
+          const target = targetHeightsRef.current[i];
+          const next = current + (target - current) * smoothingFactor;
+
+          currentHeightsRef.current[i] = next;
+
+          if (barRefs.current[i]) {
+            barRefs.current[i]!.style.height = `${next}px`;
+          }
         }
 
         animationFrameRef.current = requestAnimationFrame(updateVisualization);
@@ -177,16 +192,12 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2 }}
             >
-              {barHeights.map((height, i) => (
-                <motion.div
+              {Array(16).fill(0).map((_, i) => (
+                <div
                   key={i}
+                  ref={(el) => (barRefs.current[i] = el)}
                   className="w-0.5 bg-gradient-to-t from-blue-400 to-blue-300 rounded-full"
-                  animate={{ height }}
-                  transition={{
-                    duration: 0.1,
-                    ease: "easeOut",
-                  }}
-                  style={{ height: `${height}px` }}
+                  style={{ height: `${currentHeightsRef.current[i]}px` }}
                 />
               ))}
               <span className="ml-4 text-white/80 font-light text-sm">
