@@ -11,6 +11,8 @@ interface SettingsPanelProps {
     setHandTrackingMode: (v: "Center" | "Relative") => void;
     handSensitivity: number;
     setHandSensitivity: (v: number) => void;
+    handTrackingLossThreshold: number;
+    setHandTrackingLossThreshold: (v: number) => void;
     showHandCamera: boolean;
     setShowHandCamera: (v: boolean) => void;
 
@@ -20,6 +22,8 @@ interface SettingsPanelProps {
     setHeadTrackingSmoothing: (v: boolean) => void;
     showFaceDebug: boolean;
     setShowFaceDebug: (v: boolean) => void;
+    debugCameraControls: boolean;
+    setDebugCameraControls: (v: boolean) => void;
 
     onCopyParams: () => void;
     cameraDebugInfo: string;
@@ -49,6 +53,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setHandTrackingMode,
     handSensitivity,
     setHandSensitivity,
+    handTrackingLossThreshold,
+    setHandTrackingLossThreshold,
     showHandCamera,
     setShowHandCamera,
     faceTrackingEnabled,
@@ -57,6 +63,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setHeadTrackingSmoothing,
     showFaceDebug,
     setShowFaceDebug,
+    debugCameraControls,
+    setDebugCameraControls,
     onCopyParams,
     cameraDebugInfo,
 eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEnabled, setFoveatedRenderingEnabled , foveatedRadius, setFoveatedRadius }) => {
@@ -189,6 +197,23 @@ eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEna
                                             />
                                         </div>
 
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <Label>Loss Threshold (Debounce)</Label>
+                                                <span className="text-xs text-white/50 font-mono">{handTrackingLossThreshold}ms</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="1000"
+                                                step="50"
+                                                value={handTrackingLossThreshold}
+                                                onChange={(e) => setHandTrackingLossThreshold(Number(e.target.value))}
+                                                className="w-full accent-white/80 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                                            />
+                                            <p className="text-xs text-white/40 font-light">Delay before cancelling actions when hand is lost.</p>
+                                        </div>
+
                                         <ControlRow label="Show Camera Feed" value={showHandCamera} onChange={setShowHandCamera} />
                                     </motion.div>
                                 )}
@@ -209,6 +234,7 @@ eyeTrackingEnabled, setEyeTrackingEnabled, onCalibrateEye , foveatedRenderingEna
                                         </p>
                                         <div className="h-px bg-white/10 w-full" />
                                         <ControlRow label="Show Debug View" value={showFaceDebug} onChange={setShowFaceDebug} />
+                                        <ControlRow label="Debug Camera Controls" value={debugCameraControls} onChange={setDebugCameraControls} />
                                         <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                                             <p className="text-xs text-white/60 leading-relaxed">Face tracking enables the parallax effect.</p>
                                         </div>

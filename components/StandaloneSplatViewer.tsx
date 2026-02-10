@@ -9,6 +9,7 @@ interface StandaloneSplatViewerProps {
     headY?: MotionValue<number>;
     headZ?: MotionValue<number>;
     onCameraUpdate?: (cam: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }) => void;
+    debugCameraControls?: boolean;
 }
 
 /**
@@ -24,6 +25,7 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
     headY,
     headZ,
     onCameraUpdate,
+    debugCameraControls = false,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewerRef = useRef<any>(null);
@@ -45,7 +47,8 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
         // EXACT settings from working splat-test.html Safe Mode
         const viewer = new GaussianSplats3D.Viewer({
             // Camera - user verified coordinates, flipped to fix upside-down
-            'cameraUp': [0, -1, 0], // Flip camera up vector to fix upside-down model
+            'cameraUp': [0, -1, 0],
+            'useBuiltInControls': debugCameraControls, // Flip camera up vector to fix upside-down model
             // Start at Calibration Target z=0.05 directly
             'initialCameraPosition': [0.72, 0.31, 0.05],
             'initialCameraLookAt': [1.61, 1.02, -2.87],
@@ -83,7 +86,7 @@ export const StandaloneSplatViewer: React.FC<StandaloneSplatViewerProps> = ({
                 viewerRef.current = null;
             }
         };
-    }, [url]);
+    }, [url, debugCameraControls]);
 
     // Head tracking effect - apply head position to camera
     // VisionOS-like "window into virtual world" approach
