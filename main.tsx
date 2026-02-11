@@ -3,7 +3,7 @@ import { defineProperties } from "figma:react";
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "motion/react";
 import { TextEditor } from "./components/TextEditor";
 import { GazeIndicator } from "./components/GazeIndicator";
-import { SpeechStatus } from "./components/VoiceVisualizer";
+import { SpeechStatus, VoiceVisualizer } from "./components/VoiceVisualizer";
 
 
 import {
@@ -354,6 +354,13 @@ Head Z: ${headZ.toFixed(3)}`;
 
         onCopyParams={handleCopyParams}
         cameraDebugInfo={cameraDebugInfo}
+      />
+
+      <VoiceVisualizer
+        isListening={isListening}
+        speechData={speechData}
+        micPermissionStatus={micPermissionStatus}
+        onRequestMicPermission={requestMicrophonePermission}
       />
 
       {/* Control panel area in top left */}

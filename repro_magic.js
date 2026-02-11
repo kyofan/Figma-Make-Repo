@@ -281,4 +281,3 @@ text = "A B";
 words = ["A", " ", "B"];
 applySemanticEdit(0, "C");
 // Expected "C B"
-
