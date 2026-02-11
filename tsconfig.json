@@ -31,7 +31,8 @@
         "entry.tsx",
         "components",
         "figma-mock.ts",
-        "types"
+        "types",
+        "src"
     ],
     "references": []
 }

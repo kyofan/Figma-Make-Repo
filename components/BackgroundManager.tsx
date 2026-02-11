@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion, MotionValue, useTransform, useSpring } from "motion/react";
 import { StandaloneSplatViewer } from "./StandaloneSplatViewer";
 
@@ -46,6 +46,50 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
   const parallaxX = useTransform(effectiveX, (value) => value * parallaxIntensity);
   const parallaxY = useTransform(effectiveY, (value) => value * -parallaxIntensity);
 
+  // Memoize particle configuration to prevent random values from changing on re-renders
+  const particles = useMemo(() => {
+    return Array.from({ length: 8 }).map((_, i) => {
+      // Generate random start position
+      const left = Math.random() * 100;
+      const top = Math.random() * 100;
+
+      return {
+        id: i,
+        // Set explicit left/top via style to position relative to container
+        style: {
+          left: `${left}%`,
+          top: `${top}%`,
+        },
+        initial: {
+          x: "-50%",
+          y: "-50%",
+          scale: Math.random() * 0.5 + 0.5,
+        },
+        animate: {
+          // Drifting movement relative to the initial position (which is centered at left/top)
+          // We want to drift by about +/- 50% of the element's size (w-48)
+          // Since initial is -50%, we drift around that.
+          x: [
+            "-50%",
+            `${-50 + (Math.random() * 100 - 50)}%`, // -50 +/- 50
+            "-50%",
+          ],
+          y: [
+            "-50%",
+            `${-50 + (Math.random() * 100 - 50)}%`, // -50 +/- 50
+            "-50%",
+          ],
+        },
+        transition: {
+          duration: 20 + Math.random() * 30,
+          repeat: Infinity,
+          repeatType: "reverse" as const,
+          ease: "easeInOut",
+        },
+      };
+    });
+  }, []);
+
   if (type === "original") {
     return (
       <>
@@ -53,34 +97,15 @@ export const BackgroundManager: React.FC<BackgroundManagerProps> = ({
         <div className="absolute inset-0 bg-gradient-to-b from-gray-800 via-gray-900 to-black z-0" />
 
         {/* Subtle particle/light effect in background */}
-        <div className="absolute inset-0 z-0 opacity-20">
-          {Array.from({ length: 8 }).map((_, i) => (
+        <div className="absolute inset-0 z-0 opacity-20 overflow-hidden">
+          {particles.map((p) => (
             <motion.div
-              key={i}
+              key={p.id}
               className="absolute w-48 h-48 rounded-full bg-gradient-to-r from-blue-400/30 to-purple-400/30 blur-3xl"
-              initial={{
-                x: Math.random() * 100 - 50 + "%",
-                y: Math.random() * 100 - 50 + "%",
-                scale: Math.random() * 0.5 + 0.5,
-              }}
-              animate={{
-                x: [
-                  Math.random() * 100 - 50 + "%",
-                  Math.random() * 100 - 50 + "%",
-                  Math.random() * 100 - 50 + "%",
-                ],
-                y: [
-                  Math.random() * 100 - 50 + "%",
-                  Math.random() * 100 - 50 + "%",
-                  Math.random() * 100 - 50 + "%",
-                ],
-              }}
-              transition={{
-                duration: 20 + Math.random() * 30,
-                repeat: Infinity,
-                repeatType: "reverse",
-                ease: "easeInOut",
-              }}
+              style={p.style}
+              initial={p.initial}
+              animate={p.animate}
+              transition={p.transition}
             />
           ))}
         </div>
